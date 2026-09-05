@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+.font-serif-anthropic {
+  font-family: 'Newsreader', Georgia, Cambria, serif;
+}
+
+.font-sans-anthropic {
+  font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif;
+}
+
+/* Custom scrollbars for presentation panels */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(26, 26, 24, 0.6);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(204, 120, 92, 0.4);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(204, 120, 92, 0.7);
+}
+
+.font-mono-code {
+  font-family: 'Fira Code', monospace;
+}
+
+/* Ensure KaTeX MathML screen-reader fallback is completely hidden from visual display */
+.katex-mathml {
+  display: none !important;
+}
+
+/* Ensure Monaco Editor has pristine monospace metrics and is immune to outer font-feature-settings, letter-spacing, or user-select */
+.monaco-editor,
+.monaco-editor * {
+  font-feature-settings: normal !important;
+  letter-spacing: 0px !important;
+}
+
+.monaco-editor .view-lines,
+.monaco-editor .inputarea {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+}
+

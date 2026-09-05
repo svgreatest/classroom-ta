@@ -1,0 +1,15 @@
+{
+  "id": "01-avl-trees",
+  "title": "AVL Trees & Self-Balancing Rotations",
+  "course": "CS 201: Data Structures & Algorithms",
+  "tags": ["c", "trees", "avl", "algorithms", "gdb", "math"],
+  "date": "2026-09-05",
+  "author": "Classroom Teaching Assistant",
+  "files": [
+    "code/avl_tree.h",
+    "code/avl_tree.c",
+    "code/test_avl.c",
+    "code/demo_main.c",
+    "code/Makefile"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "02-hashmaps",
+  "title": "Hash Maps & Collision Resolution",
+  "course": "CS 201: Data Structures & Algorithms",
+  "tags": ["c", "hashmap", "hashing", "algorithms", "memory", "math"],
+  "date": "2026-09-05",
+  "author": "Classroom Teaching Assistant",
+  "files": [
+    "code/hashmap.h",
+    "code/hashmap.c",
+    "code/test_hashmap.c",
+    "code/demo_hashmap.c",
+    "code/Makefile"
+  ]
+}

@@ -1,5 +1,5 @@
 # AVL Trees: Strictly Balanced Binary Search Trees
-:::badge Lesson 01 • Advanced Data Structures & Algorithms
+:::badge • Advanced Data Structures & Algorithms
 
 Standard Binary Search Trees suffer from pathological degeneration: when keys arrive sorted ($1, 2, 3, \dots, n$), the tree collapses into a linear chain with $\mathcal{O}(n)$ search time.
 

@@ -13,12 +13,18 @@ import {
   Sparkles
 } from 'lucide-react';
 
+import { ParsedSlide } from '../../engine/slides/markdown-parser';
+import { MarkdownSlideViewer } from './MarkdownSlideViewer';
+import { LessonId } from '../../branding/BrandHeader';
+
 interface HashMapSlideDeckProps {
   currentSlide: number;
   totalSlides: number;
   onNextSlide: () => void;
   onPrevSlide: () => void;
   onSelectSlide: (idx: number) => void;
+  slides?: ParsedSlide[];
+  lessonId?: LessonId;
 }
 
 export const HashMapSlideDeck: React.FC<HashMapSlideDeckProps> = ({
@@ -27,6 +33,8 @@ export const HashMapSlideDeck: React.FC<HashMapSlideDeckProps> = ({
   onNextSlide,
   onPrevSlide,
   onSelectSlide,
+  slides,
+  lessonId = '02-hashmaps',
 }) => {
   const [revealStep, setRevealStep] = useState<number>(0);
 
@@ -41,7 +49,8 @@ export const HashMapSlideDeck: React.FC<HashMapSlideDeckProps> = ({
     }
   };
 
-  const maxSteps = getMaxSteps(currentSlide);
+  const activeSlide = slides && slides.length > 0 ? (slides[currentSlide] || slides[0]) : null;
+  const maxSteps = activeSlide ? (activeSlide.maxSteps ?? 0) : getMaxSteps(currentSlide);
 
   useEffect(() => {
     setRevealStep(0);
@@ -90,8 +99,16 @@ export const HashMapSlideDeck: React.FC<HashMapSlideDeckProps> = ({
     <div className="flex-1 flex flex-col h-full bg-[#181816] text-[#faf6ee] overflow-hidden relative select-none font-sans-anthropic">
       {/* Slide Body Container */}
       <div className="flex-1 p-6 lg:p-10 overflow-y-auto max-w-6xl mx-auto w-full flex flex-col justify-center">
-        {/* SLIDE 0: TITLE & MOTIVATION */}
-        {currentSlide === 0 && (
+        {activeSlide ? (
+          <MarkdownSlideViewer
+            slide={activeSlide}
+            lessonId={lessonId}
+            revealStep={revealStep}
+          />
+        ) : (
+          <>
+            {/* SLIDE 0: TITLE & MOTIVATION */}
+            {currentSlide === 0 && (
           <div className="space-y-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#cc785c]/15 border border-[#cc785c]/30 text-[#cc785c] text-xs font-semibold uppercase tracking-wider">
               <BookOpen className="w-3.5 h-3.5" />
@@ -325,7 +342,9 @@ export const HashMapSlideDeck: React.FC<HashMapSlideDeckProps> = ({
             </div>
           </div>
         )}
-      </div>
+      </>
+    )}
+  </div>
 
       {/* Slide Navigation Bar with Reveal Controls */}
       <div className="h-12 bg-[#141413]/90 border-t border-[#383733] px-6 flex items-center justify-between text-xs text-[#9e978c]">

@@ -23,6 +23,7 @@ interface SlideEditorProps {
   onEnterPresenter: (slideIndex: number) => void;
   currentSlideIndex: number;
   onSelectSlideIndex: (idx: number) => void;
+  onSaveSuccess?: (savedMarkdown: string) => void;
 }
 
 export const SlideEditor: React.FC<SlideEditorProps> = ({
@@ -30,6 +31,7 @@ export const SlideEditor: React.FC<SlideEditorProps> = ({
   onEnterPresenter,
   currentSlideIndex,
   onSelectSlideIndex,
+  onSaveSuccess,
 }) => {
   const [markdown, setMarkdown] = useState<string>('');
   const [slides, setSlides] = useState<ParsedSlide[]>([]);
@@ -113,6 +115,7 @@ export const SlideEditor: React.FC<SlideEditorProps> = ({
       });
       if (res.ok) {
         setSavedSuccess(true);
+        if (onSaveSuccess) onSaveSuccess(markdown);
         setTimeout(() => setSavedSuccess(false), 2500);
       }
     } catch (e) {

@@ -62,21 +62,33 @@ export const App: React.FC = () => {
   }, []);
 
   // Load Slides markdown for currentLessonId from /api/slides (for editor or custom lessons)
-  useEffect(() => {
-    let isMounted = true;
-    fetch(`/api/slides?lessonId=${currentLessonId}`)
+  const loadSlides = (lessonId: LessonId) => {
+    fetch(`/api/slides?lessonId=${lessonId}&_t=${Date.now()}`)
       .then(res => res.json())
       .then(data => {
-        if (!isMounted) return;
         if (data.content) {
           const parsed = parseAllSlides(data.content);
           setSlides(parsed);
         }
       })
       .catch(err => console.error('Failed to load lesson slides:', err));
+  };
 
-    return () => { isMounted = false; };
+  useEffect(() => {
+    loadSlides(currentLessonId);
   }, [currentLessonId]);
+
+  // When returning from /editor to presenter mode, re-fetch latest slides from disk
+  useEffect(() => {
+    if (!isEditorRoute) {
+      loadSlides(currentLessonId);
+    }
+  }, [isEditorRoute, currentLessonId]);
+
+  const handleSlidesSaved = (updatedMarkdown: string) => {
+    const parsed = parseAllSlides(updatedMarkdown);
+    setSlides(parsed);
+  };
 
   // Handle lesson change
   const handleSelectLesson = (newLessonId: LessonId) => {
@@ -120,9 +132,7 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isWhiteboardOpen, isDrawingActive]);
 
-  const totalSlidesCount = (currentLessonId === '01-avl-trees' || currentLessonId === '02-hashmaps')
-    ? 5 
-    : Math.max(1, slides.length);
+  const totalSlidesCount = slides.length > 0 ? slides.length : 5;
 
   // ==========================================
   // VIEW 1: DEDICATED SLIDE STUDIO (/editor)
@@ -225,6 +235,7 @@ export const App: React.FC = () => {
             lessonId={currentLessonId}
             currentSlideIndex={currentSlide}
             onSelectSlideIndex={setCurrentSlide}
+            onSaveSuccess={handleSlidesSaved}
             onEnterPresenter={(idx) => {
               setCurrentSlide(idx);
               navigateTo('/');
@@ -268,28 +279,32 @@ export const App: React.FC = () => {
           currentLessonId === '01-avl-trees' ? (
             <SlideDeck
               currentSlide={currentSlide}
-              totalSlides={5}
-              onNextSlide={() => setCurrentSlide(prev => Math.min(4, prev + 1))}
+              totalSlides={totalSlidesCount}
+              onNextSlide={() => setCurrentSlide(prev => Math.min(totalSlidesCount - 1, prev + 1))}
               onPrevSlide={() => setCurrentSlide(prev => Math.max(0, prev - 1))}
               onSelectSlide={setCurrentSlide}
+              slides={slides}
+              lessonId={currentLessonId}
             />
           ) : currentLessonId === '02-hashmaps' ? (
             <HashMapSlideDeck
               currentSlide={currentSlide}
-              totalSlides={5}
-              onNextSlide={() => setCurrentSlide(prev => Math.min(4, prev + 1))}
+              totalSlides={totalSlidesCount}
+              onNextSlide={() => setCurrentSlide(prev => Math.min(totalSlidesCount - 1, prev + 1))}
               onPrevSlide={() => setCurrentSlide(prev => Math.max(0, prev - 1))}
               onSelectSlide={setCurrentSlide}
+              slides={slides}
+              lessonId={currentLessonId}
             />
           ) : (
-            <PresenterView
+            <SlideDeck
+              currentSlide={currentSlide}
+              totalSlides={totalSlidesCount}
+              onNextSlide={() => setCurrentSlide(prev => Math.min(totalSlidesCount - 1, prev + 1))}
+              onPrevSlide={() => setCurrentSlide(prev => Math.max(0, prev - 1))}
+              onSelectSlide={setCurrentSlide}
               slides={slides}
-              currentSlideIndex={currentSlide}
-              onSelectSlideIndex={setCurrentSlide}
               lessonId={currentLessonId}
-              onToggleDrawing={() => setIsDrawingActive(prev => !prev)}
-              isDrawingActive={isDrawingActive}
-              onOpenWhiteboard={() => setIsWhiteboardOpen(true)}
             />
           )
         )}

@@ -1,94 +1,107 @@
+---
+theme: default
+background: '#181816'
+title: "01: AVL Trees & Self-Balancing Rotations"
+colorSchema: dark
+highlighter: shiki
+lineNumbers: true
+wakeLock: false
+---
+
 # AVL Trees: Strictly Balanced Binary Search Trees
-:::badge • Advanced Data Structures & Algorithms
+<Badge>Advanced Data Structures & Algorithms</Badge>
 
 Standard Binary Search Trees suffer from pathological degeneration: when keys arrive sorted ($1, 2, 3, \dots, n$), the tree collapses into a linear chain with $\mathcal{O}(n)$ search time.
 
-:::grid
-:::card Naive BST Degeneration ($h = n$) [caution]
+<div class="grid grid-cols-2 gap-4 my-2">
+<Card title="Naive BST Degeneration (h = n)" type="caution">
+
 Sequential insertions degrade the height to $h = n$. Every operation deteriorates from logarithmic to linear time:
 $$1 \to 2 \to 3 \to \cdots \to n \implies \mathcal{O}(n) \text{ search}$$
-:::
-:::card The AVL Guarantee (Adelson-Velsky & Landis, 1962) [tip]
+</Card>
+
+<Card title="The AVL Guarantee (Adelson-Velsky & Landis, 1962)" type="tip">
+
 By maintaining local balance factors at every node, the height is mathematically constrained to $h < 1.44 \log_2(n+2)$:
 $$\text{Search, Insert, Delete: Strictly } \mathcal{O}(\log n)$$
-:::
-:::
+</Card>
+</div>
 
-:::notes
+<!--
 Remind students how quicksort degrades to O(n^2) on sorted arrays—BSTs have the exact same problem without balancing.
-:::
+-->
 
 ---
 
 # The Balance Factor Invariant & Height Proof
-:::badge Invariant & Mathematical Proof
+<Badge>Invariant & Mathematical Proof</Badge>
 
-:::card Definition: Balance Factor $BF(v)$
+<div class="grid grid-cols-2 gap-4 my-2">
+<Card title="Definition: Balance Factor BF(v)" type="info">
+
 For every node $v \in T$, the height difference between left and right subtrees must not exceed 1:
 $$BF(v) = \text{height}(v.\text{left}) - \text{height}(v.\text{right}) \in \{-1, 0, +1\}$$
-:::
+</Card>
 
-:::card Theorem: Worst-Case Height via Minimal Fibonacci Trees [warning]
-Let $N(h)$ denote the minimum number of nodes in an AVL tree of height $h$. One subtree must have height $h-1$ and the other $h-2$:
-$$N(h) = N(h - 1) + N(h - 2) + 1 \quad \text{with } N(0) = 0, \ N(1) = 1, \ N(2) = 2$$
+<Card title="Theorem: Worst-Case Height via Minimal Fibonacci Trees" type="warning">
 
-Adding $1$ to both sides yields $N(h) + 1 = (N(h-1) + 1) + (N(h-2) + 1)$. This is the shifted Fibonacci sequence $F_{h+2}$:
-$$N(h) = F_{h+2} - 1 \approx \frac{\phi^{h+2}}{\sqrt{5}} - 1 \quad \text{where } \phi = \frac{1 + \sqrt{5}}{2} \approx 1.61803$$
-
-> [!TIP]
-> Taking base-2 logarithms yields the strict upper bound:
-> $$h < \log_\phi(n + 2) \approx \frac{\log_2(n + 2)}{\log_2 \phi} \approx 1.4404 \log_2(n + 2) = \mathcal{O}(\log n)$$
-:::
-
-:::notes
-Walk through why Fibonacci trees represent the absolute leanest AVL tree possible for a given height.
-:::
+Let $N(h)$ denote the minimum nodes in an AVL tree of height $h$:
+$$N(h) = N(h - 1) + N(h - 2) + 1$$
+Adding $1$ yields shifted Fibonacci sequence $F_{h+2}$:
+$$h < 1.44 \log_2(n + 2) = \mathcal{O}(\log n)$$
+</Card>
+</div>
 
 ---
 
 # The 4 Rebalancing Rotations
-:::badge Local Pointer Transformations
+<Badge>Local Pointer Transformations</Badge>
 
 When an insertion causes an imbalance ($|BF(z)| = 2$), exactly one of four local rotations restores the AVL invariant in $\mathcal{O}(1)$ pointer updates:
 
-:::grid
-:::card Case 1: Left-Left (LL) - Single Right Rotation [warning]
-$$y = \text{rotRight}(z) \iff y.\text{right} = z, \ z.\text{left} = T_2$$
-:::
-:::card Case 2: Right-Right (RR) - Single Left Rotation [warning]
-$$y = \text{rotLeft}(z) \iff y.\text{left} = z, \ z.\text{right} = T_2$$
-:::
-:::card Case 3: Left-Right (LR) - Double Rotation
-$$z.\text{left} = \text{rotLeft}(z.\text{left}); \quad \text{return } \text{rotRight}(z)$$
-:::
-:::card Case 4: Right-Left (RL) - Double Rotation
-$$z.\text{right} = \text{rotRight}(z.\text{right}); \quad \text{return } \text{rotLeft}(z)$$
-:::
-:::
+<div class="grid grid-cols-2 gap-3 my-2">
+<Card title="Case 1: Left-Left (LL) - Right Rotation" type="warning">
 
-:::notes
-Emphasize that double rotations are just two single rotations composed together.
-:::
+$$y = \text{rotRight}(z) \iff y.\text{right} = z, \ z.\text{left} = T_2$$
+</Card>
+
+<Card title="Case 2: Right-Right (RR) - Left Rotation" type="warning">
+
+$$y = \text{rotLeft}(z) \iff y.\text{left} = z, \ z.\text{right} = T_2$$
+</Card>
+
+<Card title="Case 3: Left-Right (LR) - Double Rotation" type="info">
+
+$$z.\text{left} = \text{rotLeft}(z.\text{left})$$
+$$\text{return } \text{rotRight}(z)$$
+</Card>
+
+<Card title="Case 4: Right-Left (RL) - Double Rotation" type="info">
+
+$$z.\text{right} = \text{rotRight}(z.\text{right})$$
+$$\text{return } \text{rotLeft}(z)$$
+</Card>
+</div>
 
 ---
 
 # Interactive VisuAlgo Lab: Parameterize & Animate
-:::badge Live In-Class Simulation
+<Badge>Live In-Class Simulation</Badge>
 
-Define tree parameters, watch rotations trigger in slow motion, or step forward/backward through tree balance transformations:
+Define tree parameters, watch rotations trigger in slow motion, or step forward/backward through tree balance transformations.
 
-:::visualizer
+<Card title="Live Interactive AVL Tree Simulator" type="tip">
 
-:::notes
-Ask a student to pick a number between 1 and 100, then show how the tree balances step-by-step.
-:::
+Switch to the **VisuAlgo Lab** tab in the top navigation bar to interact with real-time AVL balancing and step-by-step animations!
+</Card>
 
 ---
 
 # Pure C Implementation & Memory Architecture
-:::badge Production Tested Code
+<Badge>Production Tested Code</Badge>
 
-Our C implementation in `avl_tree.c` was built strictly following **Test-Driven Development (TDD)** with 311 passing assertions.
+<div class="grid grid-cols-2 gap-4 my-2">
+<div>
 
 ```c
 // Both rotRight and rotLeft in O(1) time
@@ -102,9 +115,12 @@ AVLNode* avl_rotate_left(AVLNode* x) {
   return y;
 }
 ```
+</div>
 
-:::code
+<Card title="Verification Suite" type="info">
 
-:::notes
-Intentionally introduce a syntax error or change a rotation pointer to demonstrate compiler and runtime safety checks.
-:::
+- **O(1) Rotations**: Exact local pointer adjustments.
+- **TDD Rigor**: Tested across 311 programmatic tree permutations.
+- **Memory**: Height cached directly on node struct.
+</Card>
+</div>

@@ -10,7 +10,8 @@ import {
   Hash, 
   Layers, 
   Database,
-  Sparkles
+  Sparkles,
+  Timer
 } from 'lucide-react';
 
 import { ParsedSlide } from '../../engine/slides/markdown-parser';
@@ -370,6 +371,14 @@ export const HashMapSlideDeck: React.FC<HashMapSlideDeckProps> = ({
           >
             <ChevronRight className="w-4 h-4" />
           </button>
+
+          {/* Question 2-Min Timer Pill if current slide has a question */}
+          {activeSlide?.hasQuestion && (
+            <div className="ml-2 flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[#cc785c]/15 border border-[#cc785c]/30 text-[11px] font-mono text-[#cc785c]">
+              <Timer className="w-3 h-3" />
+              <span>2m Question</span>
+            </div>
+          )}
 
           {/* Reveal Step Pill */}
           {maxSteps > 0 && (

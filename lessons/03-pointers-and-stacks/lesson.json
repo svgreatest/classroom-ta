@@ -1,0 +1,23 @@
+{
+  "id": "03-pointers-and-stacks",
+  "code": "Lesson 03",
+  "title": "Pointers, Structs & Generic Stacks",
+  "course": "CS 201: Data Structures & Systems Programming",
+  "topic": "Memory Diagrams, Pointers, Structs, & Generics",
+  "date": "2026-09-15",
+  "author": "Classroom Teaching Assistant",
+  "files": [
+    "code/01_pointer_basics.c",
+    "code/02_swap_pointers.c",
+    "code/03_array_pointers.c",
+    "code/04_struct_pointers.c",
+    "code/05_heap_memory.c",
+    "code/int_stack.h",
+    "code/int_stack.c",
+    "code/generic_stack.h",
+    "code/generic_stack.c",
+    "code/test_stacks.c",
+    "code/demo_main.c",
+    "code/Makefile"
+  ]
+}

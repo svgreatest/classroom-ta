@@ -29,12 +29,8 @@ const server = http.createServer((req, res) => {
         const data = JSON.parse(body);
         const files = data.files || {};
         const lessonId = data.lessonId || '01-avl-trees';
-        const isHashMap = lessonId === '02-hashmaps';
 
-        const targetDir = path.resolve(
-          __dirname,
-          isHashMap ? '../lessons/02-hashmaps/code' : '../lessons/01-avl-trees/code'
-        );
+        const targetDir = path.resolve(__dirname, `../lessons/${lessonId}/code`);
 
         if (!fs.existsSync(targetDir)) {
           fs.mkdirSync(targetDir, { recursive: true });
@@ -46,11 +42,19 @@ const server = http.createServer((req, res) => {
           }
         }
 
-        const compileCmd = isHashMap
-          ? 'gcc -Wall -Wextra demo_hashmap.c hashmap.c -o demo.exe'
-          : 'gcc -Wall -Wextra demo_main.c avl_tree.c -o demo.exe';
+        let compileCmd = 'gcc -Wall -Wextra demo_main.c *.c -o demo.exe';
+        let runCmd = '.\\demo.exe';
 
-        const runCmd = isHashMap ? '.\\demo.exe' : '.\\demo.exe 3';
+        if (lessonId === '01-avl-trees') {
+          compileCmd = 'gcc -Wall -Wextra demo_main.c avl_tree.c -o demo.exe';
+          runCmd = '.\\demo.exe 3';
+        } else if (lessonId === '02-hashmaps') {
+          compileCmd = 'gcc -Wall -Wextra demo_hashmap.c hashmap.c -o demo.exe';
+          runCmd = '.\\demo.exe';
+        } else if (lessonId === '03-pointers-and-stacks') {
+          compileCmd = 'gcc -Wall -Wextra demo_main.c int_stack.c generic_stack.c -o demo.exe';
+          runCmd = '.\\demo.exe';
+        }
 
         exec(compileCmd, { cwd: targetDir }, (compileErr, compileStdout, compileStderr) => {
           res.writeHead(200, { 'Content-Type': 'application/json' });

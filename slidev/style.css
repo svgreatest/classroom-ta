@@ -1,0 +1,184 @@
+@import "katex/dist/katex.min.css";
+
+:root {
+  --slidev-theme-primary: #cc785c;
+  --slidev-theme-accents: #d49b53;
+  --slidev-code-font: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/* Base slide background and text colors */
+.slidev-layout {
+  background-color: #181816 !important;
+  color: #faf6ee !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* Headings in Anthropic Editorial Serif */
+.slidev-layout h1 {
+  font-family: 'Charter', 'Bitstream Charter', 'Sitka Text', 'Cambria', serif !important;
+  color: #faf6ee !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em;
+}
+
+.slidev-layout h2 {
+  font-family: 'Charter', 'Bitstream Charter', 'Sitka Text', 'Cambria', serif !important;
+  color: #faf6ee !important;
+  font-weight: 700 !important;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.slidev-layout h2::before {
+  content: '';
+  display: inline-block;
+  width: 5px;
+  height: 1.2em;
+  background-color: #cc785c;
+  border-radius: 4px;
+}
+
+.slidev-layout h3 {
+  color: #d49b53 !important;
+  font-weight: 600 !important;
+}
+
+/* Paragraphs & Lists */
+.slidev-layout p {
+  color: #d4cfc5;
+  line-height: 1.6;
+}
+
+.slidev-layout ul, .slidev-layout ol {
+  color: #d4cfc5;
+  line-height: 1.6;
+}
+
+.slidev-layout strong {
+  color: #faf6ee;
+  font-weight: 700;
+}
+
+/* Code Blocks & Inline Code */
+.slidev-layout :not(pre) > code {
+  font-family: var(--slidev-code-font) !important;
+  background: #141413 !important;
+  border: 1px solid #383733 !important;
+  color: #cc785c !important;
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+  font-size: 0.85em;
+}
+
+.slidev-layout pre,
+.slidev-layout .slidev-code {
+  background: #141413 !important;
+  border: 1px solid #383733 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+  padding: 0.5rem 0.85rem !important;
+  margin: 0.35rem 0 !important;
+}
+
+.slidev-layout pre code,
+.slidev-layout .slidev-code code {
+  font-family: var(--slidev-code-font, monospace) !important;
+  background: transparent !important;
+  border: none !important;
+  color: inherit !important;
+  padding: 0 !important;
+  font-size: 0.78rem !important;
+  line-height: 1.3 !important;
+  display: block !important;
+  white-space: normal !important;
+}
+
+.slidev-layout pre code .line,
+.slidev-layout .slidev-code code .line {
+  display: block !important;
+  white-space: pre !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  line-height: 1.3 !important;
+}
+
+.slidev-code-line-numbers .slidev-code code .line::before {
+  display: inline-block !important;
+  width: 1.35rem !important;
+  margin-right: 0.75rem !important;
+  text-align: right !important;
+  color: #78716c !important;
+  opacity: 0.8 !important;
+  line-height: 1.3 !important;
+}
+
+/* KaTeX Math Styling */
+.katex {
+  color: #faf6ee !important;
+}
+
+.katex-display {
+  background: #141413;
+  border: 1px solid #383733;
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  margin: 0.5rem 0 !important;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.3);
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Links & Accents */
+.slidev-layout a {
+  color: #cc785c;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.2s;
+}
+
+.slidev-layout a:hover {
+  color: #d98266;
+}
+
+/* Grid helper utilities */
+.anthropic-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  margin: 0.75rem 0;
+}
+
+/* Tables */
+.slidev-layout table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  border: 1px solid #383733;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.slidev-layout th {
+  background: #22221f;
+  color: #faf6ee;
+  border: 1px solid #383733;
+  padding: 0.6rem 0.85rem;
+  font-weight: 700;
+  text-align: left;
+}
+
+.slidev-layout td {
+  border: 1px solid #383733;
+  padding: 0.5rem 0.85rem;
+  color: #d4cfc5;
+}
+
+.slidev-layout tr:nth-child(even) td {
+  background: rgba(34, 34, 31, 0.4);
+}

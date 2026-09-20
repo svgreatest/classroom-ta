@@ -10,7 +10,8 @@ import {
   Activity, 
   GitBranch,
   ShieldAlert,
-  Sparkles
+  Sparkles,
+  Timer
 } from 'lucide-react';
 
 import { ParsedSlide } from '../../engine/slides/markdown-parser';
@@ -102,7 +103,7 @@ export const SlideDeck: React.FC<SlideDeckProps> = ({
   return (
     <div className="flex-1 flex flex-col h-full bg-[#181816] text-[#faf6ee] overflow-hidden relative select-none font-sans-anthropic">
       {/* Slide Content Area */}
-      <div className="flex-1 p-6 lg:p-10 overflow-y-auto max-w-6xl mx-auto w-full flex flex-col justify-center">
+      <div className="flex-1 p-6 lg:p-10 overflow-y-auto max-w-6xl mx-auto w-full flex flex-col my-auto">
         {activeSlide ? (
           <MarkdownSlideViewer
             slide={activeSlide}
@@ -426,6 +427,14 @@ export const SlideDeck: React.FC<SlideDeckProps> = ({
           >
             <ChevronRight className="w-4 h-4" />
           </button>
+
+          {/* Question 2-Min Timer Pill if current slide has a question */}
+          {activeSlide?.hasQuestion && (
+            <div className="ml-2 flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[#cc785c]/15 border border-[#cc785c]/30 text-[11px] font-mono text-[#cc785c]">
+              <Timer className="w-3 h-3" />
+              <span>2m Question</span>
+            </div>
+          )}
 
           {/* Reveal Step Pill */}
           {maxSteps > 0 && (

@@ -10,6 +10,8 @@ export interface ParsedSlide {
   notes?: string;
   hasVisualizer: boolean;
   hasCodeRunner: boolean;
+  hasQuestion: boolean;
+  timerSeconds?: number;
   maxSteps: number;
   blocks: SlideBlock[];
 }
@@ -40,7 +42,9 @@ export type SlideBlock =
  */
 export function splitSlides(markdown: string): string[] {
   if (!markdown || !markdown.trim()) return [''];
-  return markdown.split(/\n\s*---\s*\n/).map(s => s.trim()).filter(s => s.length > 0);
+  // Strip YAML frontmatter at document start so it never becomes an empty slide
+  const cleaned = markdown.replace(/^---\s*\r?\n[\s\S]*?\r?\n---\s*\r?\n/, '');
+  return cleaned.split(/\n\s*---\s*\n/).map(s => s.trim()).filter(s => s.length > 0);
 }
 
 /**
@@ -54,6 +58,8 @@ export function parseSlide(raw: string, slideIndex: number): ParsedSlide {
   let notes: string | undefined;
   let hasVisualizer = false;
   let hasCodeRunner = false;
+  let hasQuestion = false;
+  let timerSeconds: number | undefined;
   let currentStep = 0;
   let maxSteps = 0;
 
@@ -104,6 +110,11 @@ export function parseSlide(raw: string, slideIndex: number): ParsedSlide {
 
   const flushList = () => {
     if (listItems.length > 0) {
+      const isMCQ = listItems.some(item => /^\s*\[([ xX])\]/.test(item));
+      if (isMCQ) {
+        hasQuestion = true;
+        if (!timerSeconds) timerSeconds = 120;
+      }
       blocks.push({ type: 'list', items: [...listItems], step: currentStep > 0 ? currentStep : undefined });
       listItems.length = 0;
     }
@@ -343,6 +354,23 @@ export function parseSlide(raw: string, slideIndex: number): ParsedSlide {
       continue;
     }
 
+    // 8b. Timer & Question Directives: :::timer [seconds] or :::question / :::quiz
+    if (trimmed.startsWith(':::timer')) {
+      hasQuestion = true;
+      const timerMatch = trimmed.match(/^:::timer\s*(\d+)?/);
+      if (timerMatch && timerMatch[1]) {
+        timerSeconds = parseInt(timerMatch[1], 10);
+      } else {
+        timerSeconds = 120;
+      }
+      continue;
+    }
+    if (trimmed === ':::question' || trimmed === ':::quiz') {
+      hasQuestion = true;
+      if (!timerSeconds) timerSeconds = 120;
+      continue;
+    }
+
     // 9. Alerts: > [!NOTE], > [!WARNING], > [!CAUTION], > [!TIP]
     if (trimmed.startsWith('> [!')) {
       flushList();
@@ -445,6 +473,39 @@ export function parseSlide(raw: string, slideIndex: number): ParsedSlide {
   flushAlert();
   flushGrid();
 
+  // Helper to check if any block contains a task-list MCQ (- [ ] or - [x])
+  const checkHasTaskList = (bList: SlideBlock[]): boolean => {
+    for (const b of bList) {
+      if (b.type === 'list' && b.items.some(item => /^\s*\[([ xX])\]/.test(item))) {
+        return true;
+      }
+      if (b.type === 'card' && checkHasTaskList(b.blocks)) {
+        return true;
+      }
+      if (b.type === 'grid') {
+        for (const card of b.cards) {
+          if (checkHasTaskList(card.blocks)) return true;
+        }
+      }
+    }
+    return false;
+  };
+
+  if (!hasQuestion) {
+    if (checkHasTaskList(blocks)) {
+      hasQuestion = true;
+    } else if (
+      (title && /question|quiz|concept check|understanding check/i.test(title)) ||
+      (badge && /question|quiz|concept check|understanding check/i.test(badge))
+    ) {
+      hasQuestion = true;
+    }
+  }
+
+  if (hasQuestion && !timerSeconds) {
+    timerSeconds = 120; // Default 2 minutes
+  }
+
   return {
     id: slideIndex,
     raw,
@@ -453,6 +514,8 @@ export function parseSlide(raw: string, slideIndex: number): ParsedSlide {
     notes,
     hasVisualizer,
     hasCodeRunner,
+    hasQuestion,
+    timerSeconds,
     maxSteps,
     blocks
   };

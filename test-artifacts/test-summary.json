@@ -1,0 +1,310 @@
+{
+  "totalSlides": 29,
+  "passedSlides": 29,
+  "failedSlides": 0,
+  "slides": [
+    {
+      "lessonId": "01-avl-trees",
+      "slideNumber": 1,
+      "passed": true,
+      "clearanceBottom": 72,
+      "clearanceRight": 82,
+      "failureReason": "",
+      "screenshot": "screenshots/01-avl-trees/slide-01.png"
+    },
+    {
+      "lessonId": "01-avl-trees",
+      "slideNumber": 2,
+      "passed": true,
+      "clearanceBottom": 337,
+      "clearanceRight": 82,
+      "failureReason": "",
+      "screenshot": "screenshots/01-avl-trees/slide-02.png"
+    },
+    {
+      "lessonId": "01-avl-trees",
+      "slideNumber": 3,
+      "passed": true,
+      "clearanceBottom": 156,
+      "clearanceRight": 64,
+      "failureReason": "",
+      "screenshot": "screenshots/01-avl-trees/slide-03.png"
+    },
+    {
+      "lessonId": "01-avl-trees",
+      "slideNumber": 4,
+      "passed": true,
+      "clearanceBottom": 382,
+      "clearanceRight": 82,
+      "failureReason": "",
+      "screenshot": "screenshots/01-avl-trees/slide-04.png"
+    },
+    {
+      "lessonId": "01-avl-trees",
+      "slideNumber": 5,
+      "passed": true,
+      "clearanceBottom": 298,
+      "clearanceRight": 82,
+      "failureReason": "",
+      "screenshot": "screenshots/01-avl-trees/slide-05.png"
+    },
+    {
+      "lessonId": "01-avl-trees",
+      "slideNumber": 6,
+      "passed": true,
+      "clearanceBottom": 72,
+      "clearanceRight": 82,
+      "failureReason": "",
+      "screenshot": "screenshots/01-avl-trees/slide-06.png"
+    },
+    {
+      "lessonId": "02-hashmaps",
+      "slideNumber": 1,
+      "passed": true,
+      "clearanceBottom": 76,
+      "clearanceRight": 82,
+      "failureReason": "",
+      "screenshot": "screenshots/02-hashmaps/slide-01.png"
+    },
+    {
+      "lessonId": "02-hashmaps",
+      "slideNumber": 2,
+      "passed": true,
+      "clearanceBottom": 256,
+      "clearanceRight": 43,
+      "failureReason": "",
+      "screenshot": "screenshots/02-hashmaps/slide-02.png"
+    },
+    {
+      "lessonId": "02-hashmaps",
+      "slideNumber": 3,
+      "passed": true,
+      "clearanceBottom": 242,
+      "clearanceRight": 82,
+      "failureReason": "",
+      "screenshot": "screenshots/02-hashmaps/slide-03.png"
+    },
+    {
+      "lessonId": "02-hashmaps",
+      "slideNumber": 4,
+      "passed": true,
+      "clearanceBottom": 456,
+      "clearanceRight": 82,
+      "failureReason": "",
+      "screenshot": "screenshots/02-hashmaps/slide-04.png"
+    },
+    {
+      "lessonId": "02-hashmaps",
+      "slideNumber": 5,
+      "passed": true,
+      "clearanceBottom": 76,
+      "clearanceRight": 82,
+      "failureReason": "",
+      "screenshot": "screenshots/02-hashmaps/slide-05.png"
+    },
+    {
+      "lessonId": "03-pointers-and-stacks",
+      "slideNumber": 1,
+      "passed": true,
+      "clearanceBottom": 136,
+      "clearanceRight": 82,
+      "failureReason": "",
+      "screenshot": "screenshots/03-pointers-and-stacks/slide-01.png"
+    },
+    {
+      "lessonId": "03-pointers-and-stacks",
+      "slideNumber": 2,
+      "passed": true,
+      "clearanceBottom": 182,
+      "clearanceRight": 82,
+      "failureReason": "",
+      "screenshot": "screenshots/03-pointers-and-stacks/slide-02.png"
+    },
+    {
+      "lessonId": "03-pointers-and-stacks",
+      "slideNumber": 3,
+      "passed": true,
+      "clearanceBottom": 159,
+      "clearanceRight": 82,
+      "failureReason": "",
+      "screenshot": "screenshots/03-pointers-and-stacks/slide-03.png"
+    },
+    {
+      "lessonId": "03-pointers-and-stacks",
+      "slideNumber": 4,
+      "passed": true,
+      "clearanceBottom": 210,
+      "clearanceRight": 82,
+      "failureReason": "",
+      "screenshot": "screenshots/03-pointers-and-stacks/slide-04.png"
+    },
+    {
+      "lessonId": "03-pointers-and-stacks",
+      "slideNumber": 5,
+      "passed": true,
+      "clearanceBottom": 139,
+      "clearanceRight": 82,
+      "failureReason": "",
+      "screenshot": "screenshots/03-pointers-and-stacks/slide-05.png"
+    },
+    {
+      "lessonId": "03-pointers-and-stacks",
+      "slideNumber": 6,
+      "passed": true,
+      "clearanceBottom": 84,
+      "clearanceRight": 82,
+      "failureReason": "",
+      "screenshot": "screenshots/03-pointers-and-stacks/slide-06.png"
+    },
+    {
+      "lessonId": "03-pointers-and-stacks",
+      "slideNumber": 7,
+      "passed": true,
+      "clearanceBottom": 146,
+      "clearanceRight": 82,
+      "failureReason": "",
+      "screenshot": "screenshots/03-pointers-and-stacks/slide-07.png"
+    },
+    {
+      "lessonId": "03-pointers-and-stacks",
+      "slideNumber": 8,
+      "passed": true,
+      "clearanceBottom": 122,
+      "clearanceRight": 82,
+      "failureReason": "",
+      "screenshot": "screenshots/03-pointers-and-stacks/slide-08.png"
+    },
+    {
+      "lessonId": "03-pointers-and-stacks",
+      "slideNumber": 9,
+      "passed": true,
+      "clearanceBottom": 117,
+      "clearanceRight": 68,
+      "failureReason": "",
+      "screenshot": "screenshots/03-pointers-and-stacks/slide-09.png"
+    },
+    {
+      "lessonId": "03-pointers-and-stacks",
+      "slideNumber": 10,
+      "passed": true,
+      "clearanceBottom": 144,
+      "clearanceRight": 82,
+      "failureReason": "",
+      "screenshot": "screenshots/03-pointers-and-stacks/slide-10.png"
+    },
+    {
+      "lessonId": "03-pointers-and-stacks",
+      "slideNumber": 11,
+      "passed": true,
+      "clearanceBottom": 121,
+      "clearanceRight": 82,
+      "failureReason": "",
+      "screenshot": "screenshots/03-pointers-and-stacks/slide-11.png"
+    },
+    {
+      "lessonId": "03-pointers-and-stacks",
+      "slideNumber": 12,
+      "passed": true,
+      "clearanceBottom": 29,
+      "clearanceRight": 82,
+      "failureReason": "",
+      "screenshot": "screenshots/03-pointers-and-stacks/slide-12.png"
+    },
+    {
+      "lessonId": "03-pointers-and-stacks",
+      "slideNumber": 13,
+      "passed": true,
+      "clearanceBottom": 96,
+      "clearanceRight": 82,
+      "failureReason": "",
+      "screenshot": "screenshots/03-pointers-and-stacks/slide-13.png"
+    },
+    {
+      "lessonId": "03-pointers-and-stacks",
+      "slideNumber": 14,
+      "passed": true,
+      "clearanceBottom": 200,
+      "clearanceRight": 82,
+      "failureReason": "",
+      "screenshot": "screenshots/03-pointers-and-stacks/slide-14.png"
+    },
+    {
+      "lessonId": "03-pointers-and-stacks",
+      "slideNumber": 15,
+      "passed": true,
+      "clearanceBottom": 331,
+      "clearanceRight": 82,
+      "failureReason": "",
+      "screenshot": "screenshots/03-pointers-and-stacks/slide-15.png"
+    },
+    {
+      "lessonId": "03-pointers-and-stacks",
+      "slideNumber": 16,
+      "passed": true,
+      "clearanceBottom": 181,
+      "clearanceRight": 82,
+      "failureReason": "",
+      "screenshot": "screenshots/03-pointers-and-stacks/slide-16.png"
+    },
+    {
+      "lessonId": "03-pointers-and-stacks",
+      "slideNumber": 17,
+      "passed": true,
+      "clearanceBottom": 84,
+      "clearanceRight": 82,
+      "failureReason": "",
+      "screenshot": "screenshots/03-pointers-and-stacks/slide-17.png"
+    },
+    {
+      "lessonId": "03-pointers-and-stacks",
+      "slideNumber": 18,
+      "passed": true,
+      "clearanceBottom": 136,
+      "clearanceRight": 82,
+      "failureReason": "",
+      "screenshot": "screenshots/03-pointers-and-stacks/slide-18.png"
+    }
+  ],
+  "portalTests": [
+    {
+      "name": "Portal Slide View & BrandHeader",
+      "passed": true,
+      "screenshot": "screenshots/portal/portal_slide_view___brandheader.png",
+      "details": {
+        "title": "Classroom Teaching Assistant (Classroom TA) — Live CS Lectures"
+      }
+    },
+    {
+      "name": "Interactive Visualizer Tab Switch",
+      "passed": true,
+      "screenshot": "screenshots/portal/interactive_visualizer_tab_switch.png",
+      "details": {
+        "hasVisualizer": true
+      }
+    },
+    {
+      "name": "Monaco Code Runner Tab Switch",
+      "passed": true,
+      "screenshot": "screenshots/portal/monaco_code_runner_tab_switch.png",
+      "details": {
+        "hasEditor": true
+      }
+    },
+    {
+      "name": "Non-destructive Screen Drawing Pen Toggle",
+      "passed": true,
+      "screenshot": "screenshots/portal/non_destructive_screen_drawing_pen_toggle.png",
+      "details": {
+        "canvasVisible": true
+      }
+    },
+    {
+      "name": "Whiteboard Scratchpad Modal Toggle",
+      "passed": true,
+      "screenshot": "screenshots/portal/whiteboard_scratchpad_modal_toggle.png",
+      "details": {
+        "whiteboardVisible": false
+      }
+    }
+  ]
+}

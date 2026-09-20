@@ -5,18 +5,21 @@ import { AVLTreeVisualizer } from '../visualizer/AVLTreeVisualizer';
 import { HashMapVisualizer } from '../visualizer/HashMapVisualizer';
 import { MonacoRunner } from '../editor/MonacoRunner';
 import { LessonId } from '../../branding/BrandHeader';
+import { QuestionTimer } from './QuestionTimer';
 import { 
   Info, 
   Lightbulb, 
   AlertTriangle, 
   ShieldAlert, 
   CheckCircle2,
+  XCircle,
   BookOpen, 
   Terminal, 
   Code2, 
   Layers,
   Activity,
-  GitBranch
+  GitBranch,
+  Play
 } from 'lucide-react';
 
 interface MarkdownSlideViewerProps {
@@ -27,7 +30,7 @@ interface MarkdownSlideViewerProps {
 }
 
 /**
- * Renders inline text containing $...$ or normal text with bold/italics/code
+ * Renders inline text containing $...$ or normal text with bold/italics/code/links
  */
 export const FormattedInlineText: React.FC<{ text: string }> = ({ text }) => {
   if (!text) return null;
@@ -42,21 +45,66 @@ export const FormattedInlineText: React.FC<{ text: string }> = ({ text }) => {
           return <KaTeXMath key={index} math={math} />;
         }
 
-        // Render inline markdown elements like `code`, **bold**, *italic*
-        const formatted = part.split(/(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g);
+        // Render inline markdown elements like [link](url), `code`, **bold**, *italic*
+        const formatted = part.split(/(\[[^\]]+\]\([^)]+\)|`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g);
         return (
           <React.Fragment key={index}>
             {formatted.map((token, tIdx) => {
+              // 1. Markdown Links [text](url)
+              if (token.startsWith('[') && token.includes('](') && token.endsWith(')')) {
+                const match = token.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+                if (match) {
+                  const linkText = match[1];
+                  const linkUrl = match[2];
+
+                  // Special Online Tutor Demo Trigger Link
+                  if (linkUrl.startsWith('#demo:')) {
+                    const exampleId = linkUrl.replace('#demo:', '');
+                    return (
+                      <button
+                        key={tIdx}
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          window.dispatchEvent(new CustomEvent('launch-tutor-example', { detail: exampleId }));
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 my-1 rounded-lg bg-[#cc785c] hover:bg-[#d98266] text-[#181816] font-bold text-xs shadow-md transition-all transform hover:-translate-y-0.5 cursor-pointer font-sans select-none"
+                        title={`Step through ${linkText} in Online Tutor`}
+                      >
+                        <Play className="w-3 h-3 fill-current stroke-none" />
+                        <span>{linkText}</span>
+                      </button>
+                    );
+                  }
+
+                  return (
+                    <a
+                      key={tIdx}
+                      href={linkUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[#cc785c] underline hover:text-[#d98266] font-semibold"
+                    >
+                      {linkText}
+                    </a>
+                  );
+                }
+              }
+
+              // 2. Inline Code
               if (token.startsWith('`') && token.endsWith('`') && token.length > 2) {
+                const codeText = token.slice(1, -1).replace(/\\equiv/g, '≡');
                 return (
                   <code
                     key={tIdx}
                     className="font-mono text-xs px-1.5 py-0.5 rounded bg-[#141413] border border-[#383733] text-[#cc785c] font-semibold"
                   >
-                    {token.slice(1, -1)}
+                    {codeText}
                   </code>
                 );
               }
+              // 3. Bold
               if (token.startsWith('**') && token.endsWith('**') && token.length > 4) {
                 return (
                   <strong key={tIdx} className="font-bold text-[#faf6ee]">
@@ -64,6 +112,7 @@ export const FormattedInlineText: React.FC<{ text: string }> = ({ text }) => {
                   </strong>
                 );
               }
+              // 4. Italic
               if (token.startsWith('*') && token.endsWith('*') && token.length > 2) {
                 return (
                   <em key={tIdx} className="italic text-[#d4cfc5]">
@@ -71,12 +120,91 @@ export const FormattedInlineText: React.FC<{ text: string }> = ({ text }) => {
                   </em>
                 );
               }
-              return token;
+              // Plain text (convert any unescaped \equiv to ≡ symbol)
+              return token.replace(/\\equiv/g, '≡');
             })}
           </React.Fragment>
         );
       })}
     </span>
+  );
+};
+
+/**
+ * Interactive MCQ component for Understanding Checks
+ * Shows green tick on correct answer and red cross on wrong answer
+ */
+export const InteractiveMCQ: React.FC<{ items: string[]; animClass?: string }> = ({ items, animClass = '' }) => {
+  const [selectedIdx, setSelectedIdx] = React.useState<number | null>(null);
+
+  const parsedItems = items.map((item, idx) => {
+    const isCorrect = /^\s*\[([xX])\]/.test(item);
+    const text = item.replace(/^\s*\[([ xX])\]\s*/, '');
+    return { isCorrect, text, originalIdx: idx };
+  });
+
+  return (
+    <div className={`my-4 space-y-2.5 ${animClass}`}>
+      <div className="flex items-center justify-between text-xs text-[#9e978c] mb-1 font-mono uppercase tracking-wider">
+        <span className="flex items-center gap-1.5 text-[#cc785c] font-bold">
+          <span>●</span> Select Your Answer:
+        </span>
+        {selectedIdx !== null && (
+          <button
+            type="button"
+            onClick={() => setSelectedIdx(null)}
+            className="text-[11px] text-[#9e978c] hover:text-[#faf6ee] hover:underline cursor-pointer"
+          >
+            Reset Selection
+          </button>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 gap-2.5">
+        {parsedItems.map((item, idx) => {
+          const isSelected = selectedIdx === idx;
+          const letter = String.fromCharCode(65 + idx);
+
+          let borderBgStyle = 'border-[#383733] bg-[#22221f] text-[#d4cfc5] hover:border-[#cc785c]/60 hover:bg-[#2a2a26]';
+          let icon = (
+            <span className="w-6 h-6 rounded-full border border-[#9e978c]/40 flex items-center justify-center text-xs font-mono text-[#9e978c] shrink-0 font-bold bg-[#181816]">
+              {letter}
+            </span>
+          );
+
+          if (isSelected) {
+            if (item.isCorrect) {
+              borderBgStyle = 'border-emerald-500 bg-emerald-500/15 text-[#faf6ee] shadow-lg shadow-emerald-950/40 ring-1 ring-emerald-500';
+              icon = <CheckCircle2 className="w-6 h-6 text-emerald-400 shrink-0" />;
+            } else {
+              borderBgStyle = 'border-rose-500 bg-rose-500/15 text-[#faf6ee] shadow-lg shadow-rose-950/40 ring-1 ring-rose-500';
+              icon = <XCircle className="w-6 h-6 text-rose-400 shrink-0" />;
+            }
+          }
+
+          return (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => setSelectedIdx(idx)}
+              className={`w-full text-left p-3.5 rounded-xl border transition-all duration-200 flex items-center gap-3.5 cursor-pointer select-text ${borderBgStyle}`}
+            >
+              {icon}
+              <div className="flex-1 text-xs lg:text-sm font-medium">
+                <FormattedInlineText text={item.text} />
+              </div>
+              {isSelected && (
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-md font-mono flex items-center gap-1 shrink-0 ${
+                  item.isCorrect ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                }`}>
+                  {item.isCorrect ? '✓ Correct' : '✗ Incorrect'}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 };
 
@@ -275,6 +403,11 @@ export const MarkdownSlideViewer: React.FC<MarkdownSlideViewerProps> = ({
       }
 
       case 'list': {
+        const isTaskList = block.items.some(item => /^\s*\[([ xX])\]/.test(item));
+        if (isTaskList) {
+          return <InteractiveMCQ key={index} items={block.items} animClass={animClass} />;
+        }
+
         return (
           <ul key={index} className={`my-2 space-y-1.5 list-none pl-1 ${animClass}`}>
             {block.items.map((item, itemIdx) => (
@@ -356,6 +489,14 @@ export const MarkdownSlideViewer: React.FC<MarkdownSlideViewerProps> = ({
 
   return (
     <div className="slide-content font-sans-anthropic text-[#faf6ee] select-text">
+      {/* 2-Minute Question Timer for Slides with Questions */}
+      {slide.hasQuestion && (
+        <QuestionTimer
+          slideId={slide.id}
+          initialSeconds={slide.timerSeconds || 120}
+        />
+      )}
+
       {/* Top Topic Badge if present */}
       {slide.badge && (
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#cc785c]/15 border border-[#cc785c]/30 text-[#cc785c] text-xs font-semibold uppercase tracking-wider mb-4 font-sans-anthropic">

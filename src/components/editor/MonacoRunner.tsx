@@ -10,7 +10,9 @@ import {
   RotateCcw, 
   Sparkles, 
   AlertCircle,
-  AlertTriangle
+  AlertTriangle,
+  Folder,
+  ChevronDown
 } from 'lucide-react';
 
 const AVL_INITIAL_FILES = {
@@ -555,9 +557,46 @@ export const MonacoRunner: React.FC<MonacoRunnerProps> = ({ lessonId }) => {
   const [output, setOutput] = useState<string>('');
   const [status, setStatus] = useState<'idle' | 'running' | 'success' | 'compile_error' | 'runtime_error'>('idle');
   const [copied, setCopied] = useState<boolean>(false);
+  const [exampleCategories, setExampleCategories] = useState<any[]>([]);
+  const [isExamplesMenuOpen, setIsExamplesMenuOpen] = useState<boolean>(false);
+  const [activeExamplePath, setActiveExamplePath] = useState<string | null>(null);
+  const [exampleFiles, setExampleFiles] = useState<Record<string, string>>({});
 
   const editorRef = useRef<any>(null);
   const monacoRef = useRef<any>(null);
+
+  // Load code examples from /api/code-examples
+  useEffect(() => {
+    fetch('/api/code-examples')
+      .then(res => res.json())
+      .then(data => {
+        if (data.categories) setExampleCategories(data.categories);
+      })
+      .catch(err => console.error('Failed to load code examples:', err));
+  }, []);
+
+  const handleSelectExample = async (relativePath: string) => {
+    try {
+      setIsExamplesMenuOpen(false);
+      const res = await fetch(`/api/code-examples?file=${encodeURIComponent(relativePath)}`);
+      const data = await res.json();
+      if (data.exists) {
+        setActiveExamplePath(relativePath);
+        setExampleFiles(prev => ({ ...prev, [relativePath]: data.content }));
+        setOutput('');
+        setStatus('idle');
+      }
+    } catch (err) {
+      console.error('Failed to load example file:', err);
+    }
+  };
+
+  const handleSelectLessonFile = (fileKey: string) => {
+    setActiveExamplePath(null);
+    setActiveFile(fileKey);
+    setOutput('');
+    setStatus('idle');
+  };
 
   // Switch lesson files when lessonId changes
   useEffect(() => {
@@ -565,6 +604,7 @@ export const MonacoRunner: React.FC<MonacoRunnerProps> = ({ lessonId }) => {
     setFiles(newFiles);
     const keys = Object.keys(newFiles);
     setActiveFile(keys[1]);
+    setActiveExamplePath(null);
     setOutput('');
     setStatus('idle');
   }, [lessonId, isAVL]);
@@ -586,14 +626,25 @@ export const MonacoRunner: React.FC<MonacoRunnerProps> = ({ lessonId }) => {
 
   const handleEditorChange = (value: string | undefined) => {
     if (value !== undefined) {
-      setFiles(prev => ({
-        ...prev,
-        [activeFile]: value
-      }));
+      if (activeExamplePath) {
+        setExampleFiles(prev => ({
+          ...prev,
+          [activeExamplePath]: value
+        }));
+      } else {
+        setFiles(prev => ({
+          ...prev,
+          [activeFile]: value
+        }));
+      }
     }
   };
 
   const handleResetCode = () => {
+    if (activeExamplePath) {
+      handleSelectExample(activeExamplePath);
+      return;
+    }
     setFiles(prev => ({
       ...prev,
       [activeFile]: initialFiles[activeFile as keyof typeof initialFiles]
@@ -607,6 +658,33 @@ export const MonacoRunner: React.FC<MonacoRunnerProps> = ({ lessonId }) => {
 
   const handleRun = async () => {
     setStatus('running');
+
+    // Branch 1: Standalone Code Example execution from code_examples/
+    if (activeExamplePath) {
+      setOutput(`$ gcc -Wall -Wextra ${activeExamplePath} -o example.exe\nCompiling example with GCC...\n`);
+      try {
+        await fetch('/api/code-examples', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ file: activeExamplePath, content: exampleFiles[activeExamplePath] || '' })
+        });
+
+        const res = await fetch('/api/code-examples/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ file: activeExamplePath })
+        });
+        const result = await res.json();
+        setOutput(result.output);
+        setStatus(result.success ? 'success' : (result.phase === 'compilation' ? 'compile_error' : 'runtime_error'));
+      } catch (err: any) {
+        setStatus('compile_error');
+        setOutput(`[RUNNER ERROR] ${err.message}`);
+      }
+      return;
+    }
+
+    // Branch 2: Lesson Code execution
     const mainFile = isAVL ? 'demo_main.c' : 'demo_hashmap.c';
     const cFile = isAVL ? 'avl_tree.c' : 'hashmap.c';
 
@@ -685,9 +763,9 @@ Details: ${err.message}`
             {fileKeys.map(fk => (
               <button
                 key={fk}
-                onClick={() => setActiveFile(fk)}
+                onClick={() => handleSelectLessonFile(fk)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md font-mono transition font-medium ${
-                  activeFile === fk ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+                  !activeExamplePath && activeFile === fk ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
                 }`}
               >
                 <FileCode className="w-3.5 h-3.5" />
@@ -696,9 +774,56 @@ Details: ${err.message}`
             ))}
           </div>
 
+          {/* Standalone Code Examples Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setIsExamplesMenuOpen(!isExamplesMenuOpen)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border transition font-mono font-medium ${
+                activeExamplePath
+                  ? 'bg-emerald-950/60 border-emerald-500/50 text-emerald-300'
+                  : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-white'
+              }`}
+            >
+              <Folder className="w-3.5 h-3.5 text-emerald-400" />
+              <span>{activeExamplePath ? activeExamplePath : 'Code Examples'}</span>
+              <ChevronDown className="w-3 h-3 opacity-60" />
+            </button>
+
+            {isExamplesMenuOpen && (
+              <div className="absolute top-full left-0 mt-1.5 w-64 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl p-2 z-50">
+                <div className="text-[10px] font-mono text-slate-400 uppercase tracking-wider px-2 py-1 border-b border-slate-800">
+                  Fixed Code Examples
+                </div>
+                <div className="max-h-56 overflow-y-auto mt-1 space-y-2">
+                  {exampleCategories.map(cat => (
+                    <div key={cat.category}>
+                      <div className="text-[11px] font-bold text-slate-400 px-2 py-0.5 uppercase">
+                        {cat.category}
+                      </div>
+                      {cat.files.map((f: any) => (
+                        <button
+                          key={f.relativePath}
+                          onClick={() => handleSelectExample(f.relativePath)}
+                          className={`w-full text-left px-2.5 py-1 text-xs font-mono rounded-md flex items-center gap-2 transition ${
+                            activeExamplePath === f.relativePath
+                              ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/30'
+                              : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                          }`}
+                        >
+                          <FileCode className="w-3 h-3 text-emerald-400" />
+                          <span>{f.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
           <span className="text-xs text-indigo-400 font-mono flex items-center gap-1">
             <Sparkles className="w-3.5 h-3.5" />
-            Live GCC Compiler ({isAVL ? 'AVL Trees' : 'Hash Maps'})
+            {activeExamplePath ? 'Standalone Example' : `Live GCC Compiler (${isAVL ? 'AVL Trees' : 'Hash Maps'})`}
           </span>
         </div>
 
@@ -756,7 +881,7 @@ Details: ${err.message}`
         <div className="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden flex flex-col shadow-xl">
           <div className="h-9 bg-slate-950 border-b border-slate-800 px-4 flex items-center justify-between text-xs text-slate-400">
             <span className="font-mono text-indigo-300 font-medium">
-              Editing: {activeFile}
+              Editing: {activeExamplePath || activeFile}
             </span>
             <span className="text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded font-mono">
               Pure C • In-Browser Editable
@@ -768,7 +893,7 @@ Details: ${err.message}`
               height="100%"
               defaultLanguage="c"
               language="c"
-              value={files[activeFile]}
+              value={activeExamplePath ? (exampleFiles[activeExamplePath] || '') : (files[activeFile] || '')}
               onChange={handleEditorChange}
               onMount={handleEditorDidMount}
               theme="vs-dark"

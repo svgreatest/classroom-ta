@@ -50,4 +50,44 @@ describe('Markdown Slide Parser', () => {
       expect(tableBlock.rows[0]).toEqual(['LL', 'Right']);
     }
   });
+
+  it('detects question slides with task list / MCQ and assigns default 120s timer', () => {
+    const questionSlideMd = `
+# Understanding Check: Pointer Dereference
+:::badge Concept Check 1
+
+What is printed by this code?
+
+- [ ] A) 10 20
+- [x] B) 20 20
+- [ ] C) 10 10
+`;
+    const parsed = parseSlide(questionSlideMd, 0);
+    expect(parsed.hasQuestion).toBe(true);
+    expect(parsed.timerSeconds).toBe(120);
+  });
+
+  it('detects slides with question directive and custom timer', () => {
+    const slideWithTimer = `
+# Quick Quiz
+:::timer 90
+
+Solve this within 90 seconds!
+`;
+    const parsed = parseSlide(slideWithTimer, 0);
+    expect(parsed.hasQuestion).toBe(true);
+    expect(parsed.timerSeconds).toBe(90);
+  });
+
+  it('does not mark normal non-question slides as hasQuestion', () => {
+    const normalSlide = `
+# Introduction to Memory
+:::badge Systems Overview
+
+RAM is divided into Stack, Heap, Text, and Data segments.
+`;
+    const parsed = parseSlide(normalSlide, 0);
+    expect(parsed.hasQuestion).toBe(false);
+  });
 });
+

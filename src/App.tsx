@@ -1,49 +1,61 @@
 import React, { useState, useEffect } from 'react';
 import { BrandHeader, LessonId, LessonInfo, DEFAULT_LESSONS } from './branding/BrandHeader';
-import { SlideDeck } from './components/slides/SlideDeck';
-import { HashMapSlideDeck } from './components/slides/HashMapSlideDeck';
-import { SlideEditor } from './components/slides/SlideEditor';
-import { PresenterView } from './components/slides/PresenterView';
+import { SlidevEmbed } from './components/slides/SlidevEmbed';
+import { getVisualizerForLesson } from './components/visualizer/registry';
 import { NewLessonModal } from './components/lessons/NewLessonModal';
 import { parseAllSlides, ParsedSlide } from './engine/slides/markdown-parser';
-import { AVLTreeVisualizer } from './components/visualizer/AVLTreeVisualizer';
-import { HashMapVisualizer } from './components/visualizer/HashMapVisualizer';
 import { MonacoRunner } from './components/editor/MonacoRunner';
 import { DrawingCanvasOverlay } from './components/drawing/DrawingCanvasOverlay';
 import { WhiteboardModal } from './components/drawing/WhiteboardModal';
-import { ArrowLeft, BookOpen, Plus, ChevronDown } from 'lucide-react';
 
 export const App: React.FC = () => {
-  const [currentLessonId, setCurrentLessonId] = useState<LessonId>('01-avl-trees');
+  const [currentLessonId, setCurrentLessonId] = useState<LessonId>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('classroom_ta_lesson') as LessonId) || '03-pointers-and-stacks';
+    }
+    return '03-pointers-and-stacks';
+  });
   const [lessonsList, setLessonsList] = useState<LessonInfo[]>(DEFAULT_LESSONS);
   const [activeTab, setActiveTab] = useState<'slides' | 'visualizer' | 'code'>('slides');
+  const [selectedTutorExample, setSelectedTutorExample] = useState<string>('basics');
   
-  // Dedicated route check: /editor vs /
-  const [isEditorRoute, setIsEditorRoute] = useState<boolean>(() => {
-    return window.location.pathname.startsWith('/editor');
-  });
-
   const [slides, setSlides] = useState<ParsedSlide[]>([]);
   const [currentSlide, setCurrentSlide] = useState<number>(0);
   const [isNewLessonModalOpen, setIsNewLessonModalOpen] = useState<boolean>(false);
-  const [isLessonMenuOpenInEditor, setIsLessonMenuOpenInEditor] = useState<boolean>(false);
 
   const [isDrawingActive, setIsDrawingActive] = useState<boolean>(false);
   const [isWhiteboardOpen, setIsWhiteboardOpen] = useState<boolean>(false);
 
-  // Synchronize route with browser history (popstate)
+  // Listen for C Tutor demo launch requests from Slidev slides or other components
   useEffect(() => {
-    const handlePopState = () => {
-      setIsEditorRoute(window.location.pathname.startsWith('/editor'));
+    const handleLaunchTutor = (e: any) => {
+      const exampleId = e.detail?.example || e.detail;
+      if (exampleId) {
+        setSelectedTutorExample(exampleId);
+        setActiveTab('visualizer');
+      }
     };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+    const handleMessage = (e: MessageEvent) => {
+      if (e.data && e.data.type === 'launch-tutor-example') {
+        const exampleId = e.data.detail || 'basics';
+        setSelectedTutorExample(exampleId);
+        setActiveTab('visualizer');
+      }
+      if (e.data && e.data.target === 'slidev' && e.data.navState) {
+        const slideNo = e.data.navState.no;
+        if (typeof slideNo === 'number' && slideNo >= 1) {
+          setCurrentSlide(slideNo - 1);
+        }
+      }
+    };
 
-  const navigateTo = (path: string) => {
-    window.history.pushState({}, '', path);
-    setIsEditorRoute(path.startsWith('/editor'));
-  };
+    window.addEventListener('launch-tutor-example', handleLaunchTutor as EventListener);
+    window.addEventListener('message', handleMessage);
+    return () => {
+      window.removeEventListener('launch-tutor-example', handleLaunchTutor as EventListener);
+      window.removeEventListener('message', handleMessage);
+    };
+  }, []);
 
   // Load Lessons from /api/lessons
   const refreshLessons = () => {
@@ -61,7 +73,7 @@ export const App: React.FC = () => {
     refreshLessons();
   }, []);
 
-  // Load Slides markdown for currentLessonId from /api/slides (for editor or custom lessons)
+  // Load Slides markdown for currentLessonId from /api/slides (for slide count / metadata)
   const loadSlides = (lessonId: LessonId) => {
     fetch(`/api/slides?lessonId=${lessonId}&_t=${Date.now()}`)
       .then(res => res.json())
@@ -78,29 +90,44 @@ export const App: React.FC = () => {
     loadSlides(currentLessonId);
   }, [currentLessonId]);
 
-  // When returning from /editor to presenter mode, re-fetch latest slides from disk
-  useEffect(() => {
-    if (!isEditorRoute) {
-      loadSlides(currentLessonId);
-    }
-  }, [isEditorRoute, currentLessonId]);
-
-  const handleSlidesSaved = (updatedMarkdown: string) => {
-    const parsed = parseAllSlides(updatedMarkdown);
-    setSlides(parsed);
-  };
-
   // Handle lesson change
   const handleSelectLesson = (newLessonId: LessonId) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('classroom_ta_lesson', newLessonId);
+    }
     setCurrentLessonId(newLessonId);
     setCurrentSlide(0);
   };
 
   const handleLessonCreated = (newLessonId: string) => {
     refreshLessons();
-    setCurrentLessonId(newLessonId);
-    setCurrentSlide(0);
-    navigateTo('/editor');
+    handleSelectLesson(newLessonId);
+  };
+
+  // Listen for in-slide demo trigger links (e.g. #demo:basics, #demo:quiz_...)
+  useEffect(() => {
+    const handleLaunchTutor = (e: any) => {
+      if (e.detail) {
+        setSelectedTutorExample(e.detail);
+        setActiveTab('visualizer');
+      }
+    };
+    window.addEventListener('launch-tutor-example', handleLaunchTutor);
+    return () => window.removeEventListener('launch-tutor-example', handleLaunchTutor);
+  }, []);
+
+  const handlePrevSlide = () => {
+    const iframes = document.querySelectorAll('iframe');
+    iframes.forEach(iframe => {
+      iframe.contentWindow?.postMessage({ target: 'slidev', type: 'navigate', operation: 'prev' }, '*');
+    });
+  };
+
+  const handleNextSlide = () => {
+    const iframes = document.querySelectorAll('iframe');
+    iframes.forEach(iframe => {
+      iframe.contentWindow?.postMessage({ target: 'slidev', type: 'navigate', operation: 'next' }, '*');
+    });
   };
 
   // Global Keyboard Shortcuts for In-Class Presentation
@@ -125,144 +152,31 @@ export const App: React.FC = () => {
         setActiveTab('visualizer');
       } else if (e.key === '3') {
         setActiveTab('code');
+      } else if (activeTab === 'slides') {
+        if (e.key === 'ArrowRight' || e.key === 'PageDown') {
+          handleNextSlide();
+        } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+          handlePrevSlide();
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isWhiteboardOpen, isDrawingActive]);
+  }, [isWhiteboardOpen, isDrawingActive, activeTab]);
 
   const totalSlidesCount = slides.length > 0 ? slides.length : 5;
 
-  // ==========================================
-  // VIEW 1: DEDICATED SLIDE STUDIO (/editor)
-  // ==========================================
-  if (isEditorRoute) {
-    const activeLesson = lessonsList.find(l => l.id === currentLessonId) || lessonsList[0] || DEFAULT_LESSONS[0];
-
-    return (
-      <div className="h-screen w-screen flex flex-col bg-[#181816] text-[#faf6ee] overflow-hidden relative font-sans-anthropic">
-        {/* Editor Studio Top Navigation Header */}
-        <header className="h-14 bg-[#141413] border-b border-[#383733] px-4 flex items-center justify-between z-30 select-none">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigateTo('/')}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-[#22221f] text-[#cc785c] border border-[#383733] hover:border-[#cc785c] hover:bg-[#2a2a26] transition shadow-sm"
-              title="Return to Live Classroom Presentation (/)"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>← Back to Live Classroom</span>
-            </button>
-
-            <span className="text-[#383733]">|</span>
-
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-sm tracking-wide text-[#faf6ee] uppercase font-serif-anthropic">
-                Slide Studio
-              </span>
-              <span className="text-[10px] bg-[#cc785c]/15 text-[#cc785c] border border-[#cc785c]/30 px-1.5 py-0.5 rounded font-mono font-medium">
-                MARKDOWN EDITOR
-              </span>
-            </div>
-          </div>
-
-          {/* Lesson Selector in Editor */}
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <button
-                onClick={() => setIsLessonMenuOpenInEditor(!isLessonMenuOpenInEditor)}
-                className="flex items-center gap-1.5 px-2.5 py-1 bg-[#22221f] border border-[#383733] hover:border-[#cc785c]/50 text-xs text-[#d4cfc5] hover:text-[#faf6ee] rounded-md transition font-medium"
-              >
-                <BookOpen className="w-3 h-3 text-[#cc785c]" />
-                <span>Editing: {activeLesson.code}: {activeLesson.title}</span>
-                <ChevronDown className="w-3 h-3 text-[#9e978c]" />
-              </button>
-
-              {isLessonMenuOpenInEditor && (
-                <div className="absolute top-full right-0 mt-1 w-72 bg-[#22221f] border border-[#383733] rounded-xl shadow-2xl py-1.5 z-50">
-                  <div className="px-3 py-1 flex items-center justify-between text-[10px] font-mono text-[#9e978c] uppercase tracking-wider border-b border-[#383733]">
-                    <span>Curriculum Lessons</span>
-                    <button
-                      onClick={() => {
-                        setIsLessonMenuOpenInEditor(false);
-                        setIsNewLessonModalOpen(true);
-                      }}
-                      className="text-[#cc785c] hover:text-[#e08d73] flex items-center gap-1 normal-case font-sans font-bold"
-                    >
-                      + New Lesson
-                    </button>
-                  </div>
-                  <div className="max-h-64 overflow-y-auto">
-                    {lessonsList.map(l => (
-                      <button
-                        key={l.id}
-                        onClick={() => {
-                          handleSelectLesson(l.id);
-                          setIsLessonMenuOpenInEditor(false);
-                        }}
-                        className={`w-full text-left px-3 py-2 flex flex-col transition ${
-                          l.id === currentLessonId
-                            ? 'bg-[#cc785c]/15 border-l-2 border-[#cc785c] text-white'
-                            : 'text-[#d4cfc5] hover:bg-[#2a2a26] hover:text-white'
-                        }`}
-                      >
-                        <span className="text-xs font-bold text-[#faf6ee]">
-                          {l.code}: {l.title}
-                        </span>
-                        <span className="text-[11px] text-[#9e978c] truncate">
-                          {l.topic}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <button
-              onClick={() => setIsNewLessonModalOpen(true)}
-              className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded bg-[#cc785c]/20 hover:bg-[#cc785c]/30 text-[#faf6ee] transition"
-            >
-              <Plus className="w-3 h-3 text-[#cc785c]" />
-              <span>New Lesson Folder</span>
-            </button>
-          </div>
-        </header>
-
-        {/* Dedicated Markdown Slide Editor */}
-        <main className="flex-1 overflow-hidden">
-          <SlideEditor
-            lessonId={currentLessonId}
-            currentSlideIndex={currentSlide}
-            onSelectSlideIndex={setCurrentSlide}
-            onSaveSuccess={handleSlidesSaved}
-            onEnterPresenter={(idx) => {
-              setCurrentSlide(idx);
-              navigateTo('/');
-            }}
-          />
-        </main>
-
-        <NewLessonModal
-          isOpen={isNewLessonModalOpen}
-          onClose={() => setIsNewLessonModalOpen(false)}
-          onLessonCreated={handleLessonCreated}
-        />
-      </div>
-    );
-  }
-
-  // ==========================================
-  // VIEW 2: LIVE PRESENTER / CLASSROOM MODE (/)
-  // ==========================================
   return (
     <div className="h-screen w-screen flex flex-col bg-[#181816] text-[#faf6ee] overflow-hidden relative font-sans-anthropic">
-      {/* Brand Header with Curriculum Switcher & Tools (Zero Editor Clutter) */}
+      {/* Brand Header with Curriculum Switcher & Tools */}
       <BrandHeader
         currentLessonId={currentLessonId}
         onSelectLesson={handleSelectLesson}
         currentSlide={currentSlide}
         totalSlides={totalSlidesCount}
+        onPrevSlide={handlePrevSlide}
+        onNextSlide={handleNextSlide}
         isDrawingActive={isDrawingActive}
         onToggleDrawing={() => setIsDrawingActive(prev => !prev)}
         onOpenWhiteboard={() => setIsWhiteboardOpen(true)}
@@ -270,60 +184,36 @@ export const App: React.FC = () => {
         onSelectTab={setActiveTab}
         onOpenNewLesson={() => setIsNewLessonModalOpen(true)}
         lessonsList={lessonsList}
-        onNavigateToEditor={() => navigateTo('/editor')}
       />
 
       {/* Main Classroom Content Area */}
       <main className="flex-1 overflow-hidden relative">
-        {activeTab === 'slides' && (
-          currentLessonId === '01-avl-trees' ? (
-            <SlideDeck
-              currentSlide={currentSlide}
-              totalSlides={totalSlidesCount}
-              onNextSlide={() => setCurrentSlide(prev => Math.min(totalSlidesCount - 1, prev + 1))}
-              onPrevSlide={() => setCurrentSlide(prev => Math.max(0, prev - 1))}
-              onSelectSlide={setCurrentSlide}
-              slides={slides}
-              lessonId={currentLessonId}
-            />
-          ) : currentLessonId === '02-hashmaps' ? (
-            <HashMapSlideDeck
-              currentSlide={currentSlide}
-              totalSlides={totalSlidesCount}
-              onNextSlide={() => setCurrentSlide(prev => Math.min(totalSlidesCount - 1, prev + 1))}
-              onPrevSlide={() => setCurrentSlide(prev => Math.max(0, prev - 1))}
-              onSelectSlide={setCurrentSlide}
-              slides={slides}
-              lessonId={currentLessonId}
-            />
-          ) : (
-            <SlideDeck
-              currentSlide={currentSlide}
-              totalSlides={totalSlidesCount}
-              onNextSlide={() => setCurrentSlide(prev => Math.min(totalSlidesCount - 1, prev + 1))}
-              onPrevSlide={() => setCurrentSlide(prev => Math.max(0, prev - 1))}
-              onSelectSlide={setCurrentSlide}
-              slides={slides}
-              lessonId={currentLessonId}
-            />
-          )
-        )}
+        <div className={`h-full w-full ${activeTab === 'slides' ? 'block' : 'hidden'}`}>
+          <SlidevEmbed
+            lessonId={currentLessonId}
+            isDrawingActive={isDrawingActive}
+            onSlideChange={setCurrentSlide}
+          />
+        </div>
 
-        {activeTab === 'visualizer' && (
-          <div className="h-full w-full">
-            {currentLessonId === '02-hashmaps' ? (
-              <HashMapVisualizer />
-            ) : (
-              <AVLTreeVisualizer />
-            )}
-          </div>
-        )}
+        <div className={`h-full w-full ${activeTab === 'visualizer' ? 'block' : 'hidden'}`}>
+          {React.createElement(getVisualizerForLesson(currentLessonId).component, {
+            selectedExampleId: selectedTutorExample,
+            onSelectExampleId: setSelectedTutorExample,
+            returnToSlideNumber: currentSlide + 1,
+            onReturnToSlides: () => {
+              setActiveTab('slides');
+              const iframes = document.querySelectorAll('iframe');
+              iframes.forEach(iframe => {
+                iframe.contentWindow?.postMessage({ target: 'slidev', type: 'navigate', no: currentSlide + 1 }, '*');
+              });
+            },
+          })}
+        </div>
 
-        {activeTab === 'code' && (
-          <div className="h-full w-full">
-            <MonacoRunner lessonId={currentLessonId} />
-          </div>
-        )}
+        <div className={`h-full w-full ${activeTab === 'code' ? 'block' : 'hidden'}`}>
+          <MonacoRunner lessonId={currentLessonId} />
+        </div>
       </main>
 
       {/* Non-destructive Screen Pen / Annotation Overlay */}

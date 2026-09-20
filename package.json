@@ -4,11 +4,15 @@
   "description": "Classroom Teaching Assistant (Classroom TA) - Interactive live-teaching platform with code execution, KaTeX math, VisuAlgo-style visualizers, and screen drawing.",
   "type": "module",
   "scripts": {
+    "start": "node scripts/start-app.mjs",
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:visual": "node tests/visual-overflow.mjs",
+    "test:overflow": "node tests/visual-overflow.mjs",
+    "test:all": "npm test && tsc --noEmit && node tests/visual-overflow.mjs",
     "server": "node server/runner.js"
   },
   "dependencies": {
@@ -21,12 +25,15 @@
     "tailwind-merge": "^2.5.4"
   },
   "devDependencies": {
+    "@slidev/cli": "^53.0.0",
+    "@slidev/theme-default": "^0.25.0",
     "@types/katex": "^0.16.7",
     "@types/node": "^22.7.5",
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.2",
     "autoprefixer": "^10.4.20",
+    "playwright-chromium": "^1.63.0",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.14",
     "typescript": "^5.6.3",

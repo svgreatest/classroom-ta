@@ -1,0 +1,56 @@
+===============================================================
+Classroom TA -- Lesson 03: Pointers, Structs & Generic Stacks
+===============================================================
+
+--- 1. Concrete Integer Stack Demo ---
+Created IntStack with initial capacity = 2
+Pushed: 10  | Size: 1 | Capacity: 2 (dynamic growth)
+Pushed: 20  | Size: 2 | Capacity: 2 (dynamic growth)
+Pushed: 30  | Size: 3 | Capacity: 4 (dynamic growth)
+Pushed: 40  | Size: 4 | Capacity: 4 (dynamic growth)
+Pushed: 50  | Size: 5 | Capacity: 8 (dynamic growth)
+
+Popping all elements (LIFO Order):
+  Popped: 50
+  Popped: 40
+  Popped: 30
+  Popped: 20
+  Popped: 10
+IntStack destroyed safely.
+
+--- 2. Flat Byte-Buffer Generic Stack Demo ---
+
+[A] Generic Integer Stack (elem_size = sizeof(int) = 4 bytes):
+  Pushed int: 10 (Size: 1, Cap: 2)
+  Pushed int: 20 (Size: 2, Cap: 2)
+  Pushed int: 30 (Size: 3, Cap: 4)
+  Pushed int: 40 (Size: 4, Cap: 4)
+  Popping with explicit void* cast to (int*):
+    Popped: 40
+    Popped: 30
+    Popped: 20
+    Popped: 10
+
+[B] Generic Character Stack (elem_size = sizeof(char) = 1 byte):
+  Pushed char: 'A' (Size: 1, Cap: 2)
+  Pushed char: 'B' (Size: 2, Cap: 2)
+  Pushed char: 'C' (Size: 3, Cap: 4)
+  Pushed char: 'D' (Size: 4, Cap: 4)
+  Popping with explicit void* cast to (char*):
+    Popped: 'D'
+    Popped: 'C'
+    Popped: 'B'
+    Popped: 'A'
+
+[C] Generic Struct Stack ('StockQuote' structs, size: 16 bytes):
+  Pushed Quote: AAPL   at $ 220.50 (Cap: 2)
+  Pushed Quote: GOOGL  at $ 175.25 (Cap: 2)
+  Pushed Quote: MSFT   at $ 430.10 (Cap: 4)
+  Popping Quotes with explicit void* cast to (StockQuote*):
+    Popped Quote: MSFT   at $ 430.10
+    Popped Quote: GOOGL  at $ 175.25
+    Popped Quote: AAPL   at $ 220.50
+
+GenericStack successfully demonstrated genuine storage of int, char, and structs.
+
+[OK] Demonstration completed successfully with 0 memory leaks.

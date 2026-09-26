@@ -13,7 +13,7 @@ const SLIDEV_PORT = 3030;
 function killProcessOnPort(port) {
   try {
     if (process.platform === 'win32') {
-      const stdout = execSync(`netstat -ano | findstr :${port}`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] });
+      const stdout = execSync(`cmd /c "netstat -ano | findstr :${port}"`, { encoding: 'utf8', timeout: 2500, stdio: ['pipe', 'pipe', 'ignore'] });
       const lines = stdout.trim().split('\n');
       const pids = new Set();
       for (const line of lines) {
@@ -27,12 +27,12 @@ function killProcessOnPort(port) {
       }
       for (const pid of pids) {
         try {
-          execSync(`taskkill /F /T /PID ${pid}`, { stdio: 'ignore' });
+          execSync(`taskkill /F /T /PID ${pid}`, { timeout: 2000, stdio: 'ignore' });
           console.log(`[STARTUP] Terminated existing process on port ${port} (PID ${pid})`);
         } catch {}
       }
     } else {
-      execSync(`lsof -ti :${port} | xargs kill -9`, { stdio: 'ignore' });
+      execSync(`lsof -ti :${port} | xargs kill -9`, { timeout: 2000, stdio: 'ignore' });
     }
   } catch {}
 }
@@ -74,7 +74,7 @@ async function main() {
   const isWin = process.platform === 'win32';
   const npmCmd = isWin ? 'npm.cmd' : 'npm';
   
-  const child = spawn(npmCmd, ['run', 'dev', '--', '--host', '0.0.0.0', '--port', String(PORTAL_PORT)], {
+  const child = spawn(npmCmd, ['run', 'dev', '--', '--host', '0.0.0.0', '--port', String(PORTAL_PORT), '--force'], {
     cwd: rootDir,
     stdio: 'inherit',
     shell: isWin,

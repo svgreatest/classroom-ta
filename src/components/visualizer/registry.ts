@@ -35,7 +35,8 @@ export const VISUALIZER_REGISTRY: Record<string, VisualizerConfig> = {
 export const LESSON_VISUALIZER_MAP: Record<string, string> = {
   '01-avl-trees': 'avl',
   '02-hashmaps': 'hashmap',
-  '03-pointers-and-stacks': 'pointers-opt'
+  '03-pointers-and-stacks': 'pointers-opt',
+  '04-stack-applications-and-recursion': 'pointers-opt'
 };
 
 export function getVisualizerForLesson(lessonId: string): VisualizerConfig {

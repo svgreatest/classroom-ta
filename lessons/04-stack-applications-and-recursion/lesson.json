@@ -1,0 +1,27 @@
+{
+  "id": "04-stack-applications-and-recursion",
+  "code": "Lesson 04",
+  "title": "Case study: text editor",
+  "course": "CS 201: Data Structures & Systems Programming",
+  "topic": "Undo/Redo & Expression Evaluation",
+  "date": "2026-09-23",
+  "author": "Classroom Teaching Assistant",
+  "files": [
+    "code/generic_stack.h",
+    "code/generic_stack.c",
+    "code/calculator.h",
+    "code/calculator.c",
+    "code/text_editor.h",
+    "code/text_editor.c",
+    "code/main_editor.c",
+    "code/01_reverse_list.c",
+    "code/02_parentheses_checker.c",
+    "code/03_infix_to_postfix.c",
+    "code/04_eval_postfix.c",
+    "code/05_infix_to_prefix.c",
+    "code/06_eval_prefix.c",
+    "code/07_recursion_simulation.c",
+    "code/08_tower_of_hanoi.c",
+    "code/Makefile"
+  ]
+}

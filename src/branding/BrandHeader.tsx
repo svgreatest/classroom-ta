@@ -46,6 +46,12 @@ export const DEFAULT_LESSONS: LessonInfo[] = [
     code: 'Lesson 03',
     title: 'Pointers, Structs & Generic Stacks',
     topic: 'Memory Diagrams, Pointers, Structs & Generics'
+  },
+  {
+    id: '04-stack-applications-and-recursion',
+    code: 'Lesson 04',
+    title: 'Case study: text editor',
+    topic: 'Undo/Redo & Expression Evaluation'
   }
 ];
 
@@ -341,7 +347,7 @@ export const BrandHeader: React.FC<BrandHeaderProps> = ({
         <button
           onClick={() => {
             const host = typeof window !== 'undefined' ? (window.location.hostname || 'localhost') : 'localhost';
-            window.open(`http://${host}:3030/presenter`, '_blank', 'width=1280,height=800');
+            window.open(`http://${host}:3030/presenter/`, '_blank', 'width=1280,height=800');
           }}
           title="Open Slidev Presenter Mode with Speaker Notes & Timer"
           className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md border bg-[#22221f] text-[#d4cfc5] border-[#383733] hover:bg-[#2a2a26] hover:text-[#faf6ee] transition font-medium"

@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 230" width="100%" height="100%">
+  <rect width="760" height="230" rx="10" fill="#181816" stroke="#383733" stroke-width="1.5"/>
+  <text x="30" y="34" fill="#faf6ee" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="16" font-weight="700">Tower of Hanoi: Recursive Divide-and-Conquer State</text>
+  <text x="30" y="52" fill="#9e978c" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="12">Moving N disks: (1) N-1 to Aux, (2) largest to Dest, (3) N-1 from Aux to Dest. Recurrence: T(N) = 2T(N-1) + 1</text>
+
+  <!-- 3 Pegs Graphics -->
+  <g transform="translate(60, 75)">
+    <!-- Base board -->
+    <rect x="0" y="115" width="640" height="12" rx="3" fill="#2a2a26" stroke="#52504a"/>
+    
+    <!-- Peg A (Source) -->
+    <g transform="translate(100, 0)">
+      <rect x="3" y="15" width="8" height="100" rx="3" fill="#52504a"/>
+      <text x="7" y="140" fill="#faf6ee" font-family="monospace" font-size="13" font-weight="700" text-anchor="middle">Peg A (Src)</text>
+      <!-- Disks -->
+      <rect x="-40" y="95" width="94" height="18" rx="4" fill="#991b1b" stroke="#ef4444"/>
+      <text x="7" y="108" fill="#fff" font-family="monospace" font-size="10" text-anchor="middle">Disk 3</text>
+      
+      <rect x="-28" y="75" width="70" height="18" rx="4" fill="#c2410c" stroke="#f97316"/>
+      <text x="7" y="88" fill="#fff" font-family="monospace" font-size="10" text-anchor="middle">Disk 2</text>
+      
+      <rect x="-16" y="55" width="46" height="18" rx="4" fill="#eab308" stroke="#fef08a"/>
+      <text x="7" y="68" fill="#181816" font-family="monospace" font-size="10" font-weight="700" text-anchor="middle">Disk 1</text>
+    </g>
+
+    <!-- Peg B (Auxiliary) -->
+    <g transform="translate(320, 0)">
+      <rect x="3" y="15" width="8" height="100" rx="3" fill="#52504a"/>
+      <text x="7" y="140" fill="#faf6ee" font-family="monospace" font-size="13" font-weight="700" text-anchor="middle">Peg B (Aux)</text>
+    </g>
+
+    <!-- Peg C (Destination) -->
+    <g transform="translate(540, 0)">
+      <rect x="3" y="15" width="8" height="100" rx="3" fill="#52504a"/>
+      <text x="7" y="140" fill="#faf6ee" font-family="monospace" font-size="13" font-weight="700" text-anchor="middle">Peg C (Dst)</text>
+    </g>
+
+    <!-- Movement arc -->
+    <path d="M 120 45 C 240 -10, 420 -10, 530 45" fill="none" stroke="#cc785c" stroke-width="2" stroke-dasharray="4 4"/>
+  </g>
+</svg>

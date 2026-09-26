@@ -11,9 +11,9 @@ import { WhiteboardModal } from './components/drawing/WhiteboardModal';
 export const App: React.FC = () => {
   const [currentLessonId, setCurrentLessonId] = useState<LessonId>(() => {
     if (typeof window !== 'undefined') {
-      return (localStorage.getItem('classroom_ta_lesson') as LessonId) || '03-pointers-and-stacks';
+      return (localStorage.getItem('classroom_ta_lesson') as LessonId) || '04-stack-applications-and-recursion';
     }
-    return '03-pointers-and-stacks';
+    return '04-stack-applications-and-recursion';
   });
   const [lessonsList, setLessonsList] = useState<LessonInfo[]>(DEFAULT_LESSONS);
   const [activeTab, setActiveTab] = useState<'slides' | 'visualizer' | 'code'>('slides');

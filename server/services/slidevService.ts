@@ -68,23 +68,39 @@ export class SlidevService {
     });
   }
 
+  private isSwitching: boolean = false;
+
   public async setLessonAsync(lessonId: string): Promise<{ success: boolean; lessonId: string }> {
     if (this.currentLessonId === lessonId && this.slidevProcess) {
-      const ready = await this.waitForReady(this.port, 2000);
+      const ready = await this.waitForReady(this.port, 3000);
       if (ready) {
         return { success: true, lessonId };
       }
     }
 
+    if (this.isSwitching) {
+      let waitCount = 0;
+      while (this.isSwitching && waitCount < 30) {
+        await new Promise(r => setTimeout(r, 500));
+        waitCount++;
+      }
+      if (this.currentLessonId === lessonId && this.slidevProcess) {
+        const ready = await this.waitForReady(this.port, 3000);
+        if (ready) return { success: true, lessonId };
+      }
+    }
+
+    this.isSwitching = true;
     this.currentLessonId = lessonId;
     console.log(`[SlidevService] Switching slide deck to ${lessonId}...`);
     this.stopSlidev();
     this.killPort(this.port);
 
-    await new Promise(r => setTimeout(r, 400));
+    await new Promise(r => setTimeout(r, 600));
     this.startSlidev();
 
-    const isReady = await this.waitForReady(this.port, 12000);
+    const isReady = await this.waitForReady(this.port, 35000);
+    this.isSwitching = false;
     console.log(`[SlidevService] Slidev ready for ${lessonId}: ${isReady}`);
     return { success: isReady, lessonId };
   }
@@ -113,7 +129,7 @@ export class SlidevService {
     
     this.slidevProcess = spawn(
       npxCmd,
-      ['slidev', targetSlide, '--port', String(this.port), '--remote', '--open', 'false', '--force'],
+      ['slidev', targetSlide, '--port', String(this.port), '--remote', '--open', 'false'],
       {
         cwd: this.slidevDir,
         shell: true,
@@ -128,7 +144,10 @@ export class SlidevService {
       }
     });
 
-    this.slidevProcess.stderr?.on('data', () => {});
+    this.slidevProcess.stderr?.on('data', data => {
+      const str = data.toString().trim();
+      if (str) console.warn(`[Slidev stderr]: ${str}`);
+    });
 
     this.slidevProcess.on('exit', (code) => {
       console.log(`Slidev process exited with code ${code}`);

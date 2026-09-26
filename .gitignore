@@ -9,3 +9,6 @@ __pycache__/
 .vscode/
 OnlinePythonTutor/
 test-artifacts/screenshots/
+test-artifacts/*.png
+media/
+**/partial_movie_files/

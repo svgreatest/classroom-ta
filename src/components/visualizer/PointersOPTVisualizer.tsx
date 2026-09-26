@@ -497,6 +497,355 @@ int main() {
     return 0;
 }
 `
+  },
+
+  // ==============================================================
+  // LESSON 04: STACK APPLICATIONS & RECURSION (GENERIC STACK ADT)
+  // ==============================================================
+  {
+    id: 'reverse_list',
+    title: 'L4.1 Reversing Sequences with GenericStack ADT',
+    category: 'lesson',
+    code: `#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdbool.h>
+
+// Production GenericStack ADT (built in Lesson 3)
+typedef struct {
+    void *elems;
+    size_t elem_size;
+    int capacity;
+    int top;
+} GenericStack;
+
+GenericStack* stack_create(size_t elem_size, int cap) {
+    GenericStack *s = (GenericStack*)malloc(sizeof(GenericStack));
+    s->elem_size = elem_size;
+    s->capacity = cap;
+    s->top = 0;
+    s->elems = malloc(cap * elem_size);
+    return s;
+}
+
+void stack_push(GenericStack *s, const void *val) {
+    char *dest = (char*)s->elems + (s->top * s->elem_size);
+    memcpy(dest, val, s->elem_size);
+    s->top++;
+}
+
+bool stack_pop(GenericStack *s, void *out_val) {
+    if (s->top == 0) return false;
+    s->top--;
+    char *src = (char*)s->elems + (s->top * s->elem_size);
+    memcpy(out_val, src, s->elem_size);
+    return true;
+}
+
+void stack_destroy(GenericStack *s) {
+    free(s->elems);
+    free(s);
+}
+
+// Client application consumes only public ADT methods
+int main() {
+    int list[5] = {10, 20, 30, 40, 50};
+    GenericStack *s = stack_create(sizeof(int), 5);
+
+    // Phase 1: Push elements (temporal ordering)
+    for (int i = 0; i < 5; i++) {
+        stack_push(s, &list[i]);
+    }
+
+    // Phase 2: Pop elements (inverted LIFO ordering)
+    for (int i = 0; i < 5; i++) {
+        stack_pop(s, &list[i]);
+    }
+
+    stack_destroy(s);
+    return 0; // Inspect reversed 'list' in memory view
+}
+`
+  },
+  {
+    id: 'parentheses_checker',
+    title: 'L4.2 Parentheses Validator via GenericStack ADT',
+    category: 'lesson',
+    code: `#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdbool.h>
+
+typedef struct {
+    void *elems;
+    size_t elem_size;
+    int capacity;
+    int top;
+} GenericStack;
+
+GenericStack* stack_create(size_t elem_size, int cap) {
+    GenericStack *s = (GenericStack*)malloc(sizeof(GenericStack));
+    s->elem_size = elem_size;
+    s->capacity = cap;
+    s->top = 0;
+    s->elems = malloc(cap * elem_size);
+    return s;
+}
+
+void stack_push(GenericStack *s, const void *val) {
+    char *dest = (char*)s->elems + (s->top * s->elem_size);
+    memcpy(dest, val, s->elem_size);
+    s->top++;
+}
+
+bool stack_pop(GenericStack *s, void *out_val) {
+    if (s->top == 0) return false;
+    s->top--;
+    char *src = (char*)s->elems + (s->top * s->elem_size);
+    memcpy(out_val, src, s->elem_size);
+    return true;
+}
+
+bool check_parentheses(const char *str) {
+    GenericStack *s = stack_create(sizeof(char), 16);
+
+    for (int i = 0; str[i] != '\\0'; i++) {
+        char ch = str[i];
+        if (ch == '(' || ch == '{' || ch == '[') {
+            stack_push(s, &ch);
+        } else if (ch == ')' || ch == '}' || ch == ']') {
+            char top;
+            if (!stack_pop(s, &top)) {
+                free(s->elems); free(s);
+                return false; // Underflow
+            }
+            if ((ch == ')' && top != '(') ||
+                (ch == '}' && top != '{') ||
+                (ch == ']' && top != '[')) {
+                free(s->elems); free(s);
+                return false; // Mismatch
+            }
+        }
+    }
+    bool balanced = (s->top == 0);
+    free(s->elems); free(s);
+    return balanced;
+}
+
+int main() {
+    bool valid = check_parentheses("{[()]}");
+    bool invalid = check_parentheses("[(])");
+    printf("Valid check: %d, Invalid check: %d\\n", valid, invalid);
+    return 0;
+}
+`
+  },
+  {
+    id: 'eval_postfix',
+    title: 'L4.3 Postfix (RPN) Evaluation via GenericStack ADT',
+    category: 'lesson',
+    code: `#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#include <stdbool.h>
+
+typedef struct {
+    void *elems;
+    size_t elem_size;
+    int capacity;
+    int top;
+} GenericStack;
+
+GenericStack* stack_create(size_t elem_size, int cap) {
+    GenericStack *s = (GenericStack*)malloc(sizeof(GenericStack));
+    s->elem_size = elem_size;
+    s->capacity = cap;
+    s->top = 0;
+    s->elems = malloc(cap * elem_size);
+    return s;
+}
+
+void stack_push(GenericStack *s, const void *val) {
+    char *dest = (char*)s->elems + (s->top * s->elem_size);
+    memcpy(dest, val, s->elem_size);
+    s->top++;
+}
+
+bool stack_pop(GenericStack *s, void *out_val) {
+    if (s->top == 0) return false;
+    s->top--;
+    char *src = (char*)s->elems + (s->top * s->elem_size);
+    memcpy(out_val, src, s->elem_size);
+    return true;
+}
+
+int eval_postfix(const char *expr) {
+    GenericStack *s = stack_create(sizeof(int), 16);
+
+    for (int i = 0; expr[i] != '\\0'; i++) {
+        char ch = expr[i];
+        if (isdigit(ch)) {
+            int val = ch - '0';
+            stack_push(s, &val);
+        } else if (ch == '+' || ch == '-' || ch == '*' || ch == '/') {
+            int val2, val1;
+            stack_pop(s, &val2); // Right operand
+            stack_pop(s, &val1); // Left operand
+            int res = 0;
+            if (ch == '+') res = val1 + val2;
+            else if (ch == '-') res = val1 - val2;
+            else if (ch == '*') res = val1 * val2;
+            else if (ch == '/') res = (val2 != 0) ? (val1 / val2) : 0;
+            stack_push(s, &res);
+        }
+    }
+    int ans = 0;
+    stack_pop(s, &ans);
+    free(s->elems); free(s);
+    return ans;
+}
+
+int main() {
+    // (5 + 3) * 2 = 16
+    char expr[] = "53+2*";
+    int ans = eval_postfix(expr);
+    printf("Result of %s = %d\\n", expr, ans);
+    return 0;
+}
+`
+  },
+  {
+    id: 'infix_to_postfix',
+    title: 'L4.4 Infix to Postfix Conversion (Shunting-Yard)',
+    category: 'lesson',
+    code: `#include <stdio.h>
+#include <ctype.h>
+
+int prec(char c) {
+    if (c == '^') return 3;
+    if (c == '*' || c == '/') return 2;
+    if (c == '+' || c == '-') return 1;
+    return -1;
+}
+
+int main() {
+    char infix[] = "A+B*(C-D)";
+    char postfix[50];
+    char stack[50];
+    int top = -1, k = 0;
+
+    for (int i = 0; infix[i] != '\\0'; i++) {
+        char ch = infix[i];
+        if (isalnum(ch)) {
+            postfix[k++] = ch;
+        } else if (ch == '(') {
+            stack[++top] = ch;
+        } else if (ch == ')') {
+            while (top != -1 && stack[top] != '(')
+                postfix[k++] = stack[top--];
+            top--; // Discard '('
+        } else {
+            while (top != -1 && prec(stack[top]) >= prec(ch))
+                postfix[k++] = stack[top--];
+            stack[++top] = ch;
+        }
+    }
+    while (top != -1) postfix[k++] = stack[top--];
+    postfix[k] = '\\0';
+
+    printf("Infix:   %s\\nPostfix: %s\\n", infix, postfix);
+    return 0;
+}
+`
+  },
+  {
+    id: 'prefix_ops',
+    title: 'L4.5 Prefix Evaluation & Conversion Duality',
+    category: 'lesson',
+    code: `#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
+
+// Prefix Evaluation via Right-to-Left Scanning
+int eval_prefix(const char *expr) {
+    int stack[50];
+    int top = -1;
+    int len = strlen(expr);
+
+    for (int i = len - 1; i >= 0; i--) {
+        char ch = expr[i];
+        if (isdigit(ch)) {
+            stack[++top] = ch - '0';
+        } else if (ch == '+' || ch == '-' || ch == '*') {
+            // Notice: val1 is left operand, val2 is right operand
+            int val1 = stack[top--];
+            int val2 = stack[top--];
+            int res = 0;
+            if (ch == '+') res = val1 + val2;
+            else if (ch == '-') res = val1 - val2;
+            else if (ch == '*') res = val1 * val2;
+            stack[++top] = res;
+        }
+    }
+    return stack[top];
+}
+
+int main() {
+    // - + 5 3 * 2 4 => (5 + 3) - (2 * 4) = 8 - 8 = 0
+    char prefix[] = "-+53*24";
+    int ans = eval_prefix(prefix);
+    printf("Prefix eval %s = %d\\n", prefix, ans);
+    return 0;
+}
+`
+  },
+  {
+    id: 'recursion_callstack',
+    title: 'L4.6 Recursion & Call Stack Activation Records',
+    category: 'lesson',
+    code: `#include <stdio.h>
+
+int factorial(int n) {
+    // Step through to watch stack frames push and pop!
+    if (n <= 1) {
+        return 1; // Base case: frame unwind starts
+    }
+    int sub = factorial(n - 1); // New stack frame created
+    return n * sub;
+}
+
+int main() {
+    int val = 4;
+    int result = factorial(val);
+    printf("factorial(%d) = %d\\n", val, result);
+    return 0;
+}
+`
+  },
+  {
+    id: 'tower_of_hanoi',
+    title: 'L4.7 Tower of Hanoi Recursive Tree Trace',
+    category: 'lesson',
+    code: `#include <stdio.h>
+
+void hanoi(int n, char from, char to, char aux) {
+    if (n == 0) return;
+    // Step 1: Move n-1 disks to auxiliary
+    hanoi(n - 1, from, aux, to);
+    // Step 2: Move largest disk to destination
+    printf("Move disk %d: %c -> %c\\n", n, from, to);
+    // Step 3: Move n-1 disks from auxiliary to destination
+    hanoi(n - 1, aux, to, from);
+}
+
+int main() {
+    int n = 3;
+    printf("Solving Tower of Hanoi for n = %d\\n", n);
+    hanoi(n, 'A', 'C', 'B');
+    return 0;
+}
+`
   }
 ];
 

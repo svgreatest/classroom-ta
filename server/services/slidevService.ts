@@ -42,19 +42,44 @@ export class SlidevService {
     }
   }
 
-  public waitForReady(port: number, timeoutMs = 12000): Promise<boolean> {
+  // Title Slidev puts in <title> for a lesson ("<frontmatter title> - Slidev").
+  // Used to tell our deck apart from a stale Slidev still holding the port.
+  public expectedTitle(lessonId: string): string | null {
+    try {
+      const md = fs.readFileSync(path.join(this.baseDir, 'lessons', lessonId, 'slides.md'), 'utf8');
+      const fm = md.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+      const m = fm?.[1].match(/^title:\s*(.+)$/m);
+      return m ? m[1].trim().replace(/^["']|["']$/g, '') : null;
+    } catch {
+      return null;
+    }
+  }
+
+  public waitForReady(port: number, timeoutMs = 12000, lessonId?: string): Promise<boolean> {
     const startTime = Date.now();
+    const title = lessonId ? this.expectedTitle(lessonId) : null;
     return new Promise(resolve => {
       const check = () => {
         if (Date.now() - startTime > timeoutMs) {
           return resolve(false);
         }
         const req = http.get(`http://localhost:${port}/`, res => {
-          if (res.statusCode && res.statusCode < 400) {
-            resolve(true);
-          } else {
-            setTimeout(check, 250);
+          if (!res.statusCode || res.statusCode >= 400) {
+            res.resume();
+            return setTimeout(check, 250);
           }
+          if (!title) {
+            res.resume();
+            return resolve(true);
+          }
+          let body = '';
+          res.setEncoding('utf8');
+          res.on('data', chunk => { body += chunk; });
+          res.on('end', () => {
+            const served = body.match(/<title>([^<]*)<\/title>/)?.[1] ?? '';
+            if (served.startsWith(title)) resolve(true);
+            else setTimeout(check, 250);
+          });
         });
         req.on('error', () => {
           setTimeout(check, 250);
@@ -72,7 +97,7 @@ export class SlidevService {
 
   public async setLessonAsync(lessonId: string): Promise<{ success: boolean; lessonId: string }> {
     if (this.currentLessonId === lessonId && this.slidevProcess) {
-      const ready = await this.waitForReady(this.port, 3000);
+      const ready = await this.waitForReady(this.port, 3000, lessonId);
       if (ready) {
         return { success: true, lessonId };
       }
@@ -85,7 +110,7 @@ export class SlidevService {
         waitCount++;
       }
       if (this.currentLessonId === lessonId && this.slidevProcess) {
-        const ready = await this.waitForReady(this.port, 3000);
+        const ready = await this.waitForReady(this.port, 3000, lessonId);
         if (ready) return { success: true, lessonId };
       }
     }
@@ -99,7 +124,7 @@ export class SlidevService {
     await new Promise(r => setTimeout(r, 600));
     this.startSlidev();
 
-    const isReady = await this.waitForReady(this.port, 35000);
+    const isReady = await this.waitForReady(this.port, 35000, lessonId);
     this.isSwitching = false;
     console.log(`[SlidevService] Slidev ready for ${lessonId}: ${isReady}`);
     return { success: isReady, lessonId };

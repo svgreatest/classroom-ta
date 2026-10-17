@@ -1,4 +1,6 @@
 ---
+addons:
+  - "@/../../slidev"
 theme: default
 background: '#181816'
 title: "02: Hash Maps & Collision Resolution"

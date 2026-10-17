@@ -1,609 +1,715 @@
 ---
+addons:
+  - "@/../../slidev"
 theme: default
 background: '#181816'
-title: "03: Pointers & Physical Memory"
+title: "03: Pointers to a Generic Stack"
 colorSchema: dark
 highlighter: shiki
 lineNumbers: true
 wakeLock: false
 ---
 
-<h1 class="text-3xl font-bold text-slate-100">Physical RAM & Architecture</h1>
-<Badge>Systems Architecture • Memory Model</Badge>
+<Badge>Lesson 03</Badge>
 
-<div class="grid grid-cols-2 gap-4 my-2">
-<Card title="The Contiguous Byte Street" type="info">
+# From a memory address to a stack that holds any type
 
-RAM is physically organized as a linear array of **1-byte cells** (8 bits each).
-
-Every byte has a unique numeric **Address** in hexadecimal:  
-`0x1000`, `0x1001`, `0x1002`, `0x1003`, ...
-
-Think of RAM as a long street where each byte is a house, and its numeric address is the house number!
-</Card>
-
-<Card title="Anatomy of a C Program in RAM" type="tip">
-
-The OS divides program address space into dedicated zones:
-- **Text / Code**: Read-only machine instructions.
-- **Data / BSS**: Global and static variables.
-- **Heap**: Dynamic memory via `malloc()` and `free()`.
-- **Stack**: Fast scratch space for function call frames.
-</Card>
+<div class="roadmap mt-10">
+  <div class="rm-step"><div class="rm-glyph">0x1000</div><div class="rm-name">Address</div><div class="rm-q">Where does data live?</div></div>
+  <div class="rm-arrow">→</div>
+  <div class="rm-step"><div class="rm-glyph">int *p</div><div class="rm-name">Pointer</div><div class="rm-q">How do we refer to it?</div></div>
+  <div class="rm-arrow">→</div>
+  <div class="rm-step"><div class="rm-glyph">malloc</div><div class="rm-name">Heap</div><div class="rm-q">How do we get more?</div></div>
+  <div class="rm-arrow">→</div>
+  <div class="rm-step"><div class="rm-glyph">realloc</div><div class="rm-name">Growth</div><div class="rm-q">What if it fills up?</div></div>
+  <div class="rm-arrow">→</div>
+  <div class="rm-step"><div class="rm-glyph">void*</div><div class="rm-name">Any type</div><div class="rm-q">What if we don't know T?</div></div>
+  <div class="rm-arrow">→</div>
+  <div class="rm-step rm-goal"><div class="rm-glyph">push / pop</div><div class="rm-name">GenericStack</div><div class="rm-q">A reusable library</div></div>
 </div>
 
+<div class="mt-10 text-xl text-[#d4cfc5]">
+Each step answers one question. The last step uses all of them.
+</div>
+
+<style>
+.roadmap { display: flex; align-items: stretch; gap: 0.4rem; }
+.rm-step { flex: 1; padding: 0.8rem 0.6rem; border-radius: 0.6rem; background: #22221f; border: 1px solid #383733; text-align: center; }
+.rm-goal { border-color: #cc785c; background: rgba(204, 120, 92, 0.15); }
+.rm-glyph { font-family: var(--slidev-code-font, monospace); font-variant-ligatures: none; font-size: 1.15rem; color: #cc785c; }
+.rm-name { margin-top: 0.4rem; font-size: 1.15rem; font-weight: 700; color: #faf6ee; }
+.rm-q { margin-top: 0.3rem; font-size: 0.85rem; line-height: 1.3; color: #9e978c; }
+.rm-arrow { align-self: center; color: #5c5a54; font-size: 1.4rem; }
+</style>
+
 <!--
-Welcome students. In this lecture, we build data structures from the silicon up.
-Notice: a variable's type tells the compiler two things: how many bytes to reserve, and how to interpret the bits stored inside those bytes!
+The roadmap for today. Each box is one slide group; point back to it as you move along.
+Next lesson we use the finished GenericStack to ship a real feature.
 -->
 
 ---
 
-# Basic Pointers: Addresses & Dereferencing
-<Badge>Building Block 1 • Memory Pointers</Badge>
+# Why stacks: a real crash report
 
-A **pointer** is simply a variable whose value is the **memory address** of another variable!
-
-<div class="grid grid-cols-2 gap-4 my-2">
-<Card title="& Operator (&quot;Address-Of&quot;)" type="info">
-
-**"Where is this variable located in RAM?"**
-- `&target` evaluates to the address of `target`.
-- If `target` is an `int`, `&target` is `int*`.
-```c
-int target = 42;
-int *ptr = &target; // ptr holds 0x7FFEE4
+```text {all|2|3|4|5}
+Program received signal SIGSEGV, Segmentation fault.
+#0  send_request (req=0x0) at gateway.c:88    ← newest call, crashed here
+#1  charge_card (amount=4999) at payment.c:17
+#2  place_order (cart=0x4052a0) at checkout.c:42
+#3  main () at main.c:9                       ← oldest call
 ```
-</Card>
 
-<Card title="* Operator (&quot;Dereference&quot;)" type="tip">
-
-**"Follow the arrow and mutate what is inside!"**
-- `*ptr` jumps to the address and touches the bytes.
-- Direct physical mutation across memory:
-```c
-*ptr = 99; // target is now 99!
-```
-</Card>
-</div>
-
-<TutorLink example="basics" label="Step Through Basic Pointers in C Memory Tutor" />
+<InIndustry where="gdb · lldb · crash reporters (Sentry, Crashlytics)" icon="🧯">
+Calls pile up; the newest one fails first. That pile is a <strong>stack</strong>.
+</InIndustry>
 
 <!--
-Pedagogical distinction: '*' has two meanings in C syntax:
-1. In a declaration (int *ptr), it declares a pointer type.
-2. In an expression (*ptr = 99), it performs a dereference (reads/writes target).
+This is gdb's `bt` (backtrace) after a C program crashed: main called place_order, which called charge_card, which called send_request with a NULL pointer.
+Click from #0 down: frame #0 is the newest call. We unwind in reverse order: last in, first out.
+To build a stack in C we first need to talk about where data lives: memory and pointers.
 -->
 
 ---
 
-# Pointer Arithmetic: Scaling by sizeof(T)
-<Badge>Building Block 2 • Address Offsets</Badge>
-
-When you add `1` to an integer, it increments by 1.  
-**When you add `1` to a pointer `T*`, the CPU advances the address by $\mathtt{sizeof}(T)$ bytes!**
-
-<div class="grid grid-cols-2 gap-4 my-2">
-<Card title="The Scaling Rule" type="info">
-
-$$\mathtt{p + i} = \text{Address}(p) + (i \times \mathtt{sizeof}(*p))$$
-
-- For `char*` (1 byte): `p + 1` advances by **1 byte**.
-- For `int*` (4 bytes): `p + 1` advances by **4 bytes**.
-- For `double*` (8 bytes): `p + 1` advances by **8 bytes**.
-</Card>
-
-<Card title="Pointer Walking" type="tip">
-
-Because addition scales by type size, you can step through contiguous array elements by simply incrementing the pointer:
-
-```c
-int *p = numbers;
-int first  = *p++; // Reads element, advances 4 bytes
-int second = *p++; // Reads next element
+```yaml
+clicks: 3
 ```
-</Card>
+
+# Memory is one long street of numbered houses
+
+<div class="mt-10">
+<MemoryRow
+  :step="$clicks"
+  :cells="[
+    { addr: '0x1000', value: '42', name: 'x', highlightAt: [1] },
+    { addr: '0x1004', value: '7',  name: 'y' },
+    { addr: '0x1008', value: '0x1000', name: 'p', pointsTo: 0, showAt: 2, highlightAt: [3] },
+    { addr: '0x100C', value: '' },
+    { addr: '0x1010', value: '' },
+  ]"
+/>
 </div>
 
-<TutorLink example="pointer_arithmetic" label="Step Through Pointer Arithmetic in C Memory Tutor" />
+<div class="mt-6 text-2xl space-y-2">
+<div v-click="1"><code>&x</code> is the <em>address</em> of x: <code>0x1000</code></div>
+<div v-click="2"><code>int *p = &x;</code> stores that address in p</div>
+<div v-click="3"><code>*p</code> follows the arrow and reads 42</div>
+</div>
+
+<TutorLink example="basics" label="Watch it in the C Memory Tutor" />
 
 <!--
-Emphasize why pointer arithmetic is type-safe: you navigate logical elements rather than calculating raw byte offsets by hand.
+Each int takes 4 bytes. A pointer is just a variable whose value is an address.
+& = "address of", * = "go to that address". Open the Tutor and step through basics.
 -->
 
 ---
 
-## Understanding Check: Pointer Dereference & Precedence
-<Badge>Concept Check 1 • Operators & Side Effects</Badge>
+```yaml
+clicks: 3
+```
+
+# Pointer arithmetic moves by `sizeof(T)`, not by 1
+
+<div class="mt-8">
+<MemoryRow
+  :step="$clicks"
+  :cells="[
+    { addr: '0x2000', value: '10', name: 'a[0]', highlightAt: [0,1] },
+    { addr: '0x2004', value: '20', name: 'a[1]', highlightAt: [2] },
+    { addr: '0x2008', value: '30', name: 'a[2]', highlightAt: [3] },
+    { addr: '0x200C', value: '40', name: 'a[3]' },
+  ]"
+/>
+</div>
+
+<div class="mt-6 text-2xl font-mono">
+<div v-click="1"><code>int *p = a;</code> → 0x2000</div>
+<div v-click="2"><code>p + 1</code> → 0x2004 &nbsp;<span class="opacity-60">(+4 bytes)</span></div>
+<div v-click="3"><code>p + 2</code> → 0x2008</div>
+</div>
+
+$$\texttt{p + i} \;=\; \text{address}(p) + i \times \texttt{sizeof}(T) \qquad\qquad \texttt{a[i]} \equiv \texttt{*(a + i)}$$
+
+<InIndustry where="Network stacks · file parsers (PNG, ZIP, TCP headers)" icon="📦">
+Parsers walk raw byte buffers with pointer arithmetic. Off-by-one here = security bug.
+</InIndustry>
+
+---
 
 <MCQ
-  context="Consider the following C code snippet executing on an array:"
+  label="Check 1 · *p++"
   :code="[
     'int a[] = {10, 20, 30, 40, 50};',
     'int *p = a;',
-    ' ',
     'int x = *p++;',
     'int y = ++*p;',
     'int z = *++p;'
   ]"
-  question="What will be printed by printf(&quot;%d %d %d %d&quot;, x, y, z, a[1]);?"
-  :options="[
-    'A) 10 20 30 20',
-    'B) 10 21 21 20',
-    'C) 10 21 30 21',
-    'D) 11 21 31 21'
-  ]"
+  question="What does printf(&quot;%d %d %d %d&quot;, x, y, z, a[1]) print?"
+  :options="['10 20 30 20', '10 21 21 20', '10 21 30 21', '11 21 31 21']"
   answer="C"
   :timer="120"
-  timer-title="Concept Check 1 • 2-Min Timer"
+  timer-title="2 min"
   tutor-example="quiz_basics"
-  tutor-label="Step Through Quiz 1 in C Memory Tutor"
 >
   <template #explanation>
-    <ol class="text-xs space-y-1">
-      <li><code>*p++</code>: Postfix <code>++</code> has higher precedence than <code>*</code>. Evaluates to <code>*p</code> (<code>10</code>), then advances <code>p</code> to <code>&a[1]</code>.</li>
-      <li><code>++*p</code>: Prefix <code>++</code> and <code>*</code> associate right-to-left: <code>++(*p)</code>. <code>a[1]</code> becomes <code>21</code>, <code>y = 21</code>.</li>
-      <li><code>*++p</code>: Increments <code>p</code> to <code>&a[2]</code>, dereferences to <code>30</code> (<code>z = 30</code>).</li>
-      <li><code>a[1]</code> remains <code>21</code> due to step 2!</li>
-    </ol>
+    <p><code>*p++</code> reads 10, then moves p to <code>a[1]</code>.</p>
+    <p><code>++*p</code> is <code>++(*p)</code>: a[1] becomes 21.</p>
+    <p><code>*++p</code> moves p to <code>a[2]</code> and reads 30.</p>
   </template>
 </MCQ>
 
 ---
 
-## Understanding Check: Pointer Subtraction & ptrdiff_t
-<Badge>Concept Check 2 • Pointer Differences</Badge>
-
 <MCQ
-  context="Now that you know pointers scale by sizeof(T), consider pointer subtraction in C:"
+  label="Check 2 · Pointer subtraction"
   :code="[
-    '#include <stdio.h>',
-    '#include <stddef.h>',
     'int a[] = {10, 20, 30, 40, 50, 60};',
-    'int *p1 = a + 1; // points to 20',
-    'int *p2 = a + 4; // points to 50',
-    ' ',
+    'int *p1 = a + 1;   // points to 20',
+    'int *p2 = a + 4;   // points to 50',
     'ptrdiff_t diff = p2 - p1;',
     'int val = *(p1 + diff - 1);'
   ]"
-  question="What will be the values of diff and val?"
-  :options="[
-    'A) diff = 12, val = 40',
-    'B) diff = 3,  val = 40',
-    'C) diff = 3,  val = 50',
-    'D) diff = 12, val = 50'
-  ]"
+  question="What are diff and val?"
+  :options="['diff = 12, val = 40', 'diff = 3, val = 40', 'diff = 3, val = 50', 'diff = 12, val = 50']"
   answer="B"
   :timer="120"
-  timer-title="Concept Check 2 • 2-Min Timer"
+  timer-title="2 min"
   tutor-example="quiz_arithmetic"
-  tutor-label="Step Through Quiz 2 in C Memory Tutor"
 >
   <template #explanation>
-    <ol class="text-xs space-y-1">
-      <li>In C, pointer subtraction <code>p2 - p1</code> returns the count of <strong>elements</strong> of type <code>T</code> between them, not raw byte count!</li>
-      <li>$$\mathtt{diff} = \frac{12 \text{ bytes}}{4 \text{ bytes/int}} = 3$$</li>
-      <li><code>p1 + diff - 1 = p1 + 2</code> points to <code>a[3] = 40</code>. Result: <code>diff = 3, val = 40</code>.</li>
-    </ol>
+    <p>Subtracting pointers counts <strong>elements</strong>, not bytes: <Tex expr="\texttt{diff} = \dfrac{12 \text{ bytes}}{4 \text{ bytes per int}} = 3" /></p>
+    <p><code>p1 + 2</code> points to <code>a[3]</code>, so val = 40.</p>
   </template>
 </MCQ>
 
 ---
 
-# Dynamic Memory Allocation: malloc, calloc & realloc
-<Badge>Building Block 3 • Heap Memory Management</Badge>
+```yaml
+clicks: 3
+```
 
-Stack variables are transient—they are destroyed when the function returns.  
-**To allocate data that survives function returns or has dynamic size, request memory from the Heap!**
+# Strings are `char` arrays ending in `'\0'`
 
-<div class="grid grid-cols-2 gap-4 my-2">
-<Card title="1. malloc vs calloc" type="info">
-
-- `malloc(total_bytes)`:
-  Contiguous raw bytes on heap. **Uninitialized** (garbage bytes).
-  ```c
-  int *p = (int*)malloc(5 * sizeof(int)); // 20 bytes
-  ```
-- `calloc(n, size)`:
-  Contiguous heap memory **cleared to zero** (`0x00`).
-  ```c
-  int *p = (int*)calloc(5, sizeof(int));  // 20 zeroed bytes
-  ```
-</Card>
-
-<Card title="2. realloc & The Golden Rule of free" type="tip">
-
-- `realloc(ptr, new_bytes)`:
-  Resizes heap block. Expands in place or moves to new address.
-  ```c
-  int *temp = (int*)realloc(p, 10 * sizeof(int));
-  if (temp != NULL) p = temp;
-  ```
-- **The Golden Rule**: Every `malloc`/`calloc` MUST be paired with `free(p)`! Always set `p = NULL` afterward to avoid dangling pointers.
-</Card>
+<div class="mt-6">
+<MemoryRow
+  :step="$clicks"
+  :cell-width="96"
+  :cells="[
+    { addr: '0x3000', value: `'c'`, name: 's[0]', highlightAt: [1] },
+    { addr: '0x3001', value: `'a'`, name: 's[1]', highlightAt: [2] },
+    { addr: '0x3002', value: `'t'`, name: 's[2]', highlightAt: [2] },
+    { addr: '0x3003', value: `'\\0'`, name: 's[3]', highlightAt: [3] },
+    { addr: '' },
+    { addr: '0x3010', value: '0x3000', name: 'char *s', pointsTo: 0 },
+  ]"
+/>
 </div>
 
-<TutorLink example="dynamic_memory" label="Step Through Dynamic Memory in C Memory Tutor" />
-
----
-
-# Double Pointers: Pointers to Pointers (**)
-<Badge>Building Block 4 • Multiple Indirection</Badge>
-
-What happens when a function needs to modify where a pointer points? We use a **double pointer** (`**`).
-
-<div class="grid grid-cols-2 gap-4 my-2">
-<Card title="Memory Chains & Two-Hop Arrows" type="info">
+<div class="grid grid-cols-2 gap-6 mt-4">
 
 ```c
-int val = 42;
-int *ptr = &val;     // ptr holds &val (0x1000)
-int **pptr = &ptr;   // pptr holds &ptr (0x2000)
+char a[] = "cat";  // 4 bytes you own: a[0] = 'b' ✓
+char *s  = "cat";  // points at a read-only literal:
+                   // s[0] = 'b' crashes ✗
 ```
-- Box 1: `val` stores `42` at `0x1000`.
-- Box 2: `ptr` stores `0x1000` at `0x2000`.
-- Box 3: `pptr` stores `0x2000` at `0x3000`.
-</Card>
 
-<Card title="Dereferencing & Scope Mutability" type="tip">
-
-- `*pptr`: One hop $\to$ yields `ptr` (`0x1000`).
-- `**pptr`: Two hops $\to$ touches `val` (`42`)!
-- Mutating: `**pptr = 999` directly modifies `val`!
-
-*Why double pointers?* In C, arguments pass by value. To let a helper function allocate memory or retarget a caller's pointer, you must pass `&ptr` as `int**`!
-</Card>
+<div class="text-2xl space-y-2">
+<div v-click="1"><code>*s</code> is <code>'c'</code>: one byte</div>
+<div v-click="2"><code>s + 1</code> moves 1 byte</div>
+<div v-click="3"><code>'\0'</code> marks the end: <code>while (*s) s++;</code></div>
+</div>
 </div>
 
-<TutorLink example="double_pointers" label="Step Through Double Pointers in C Memory Tutor" />
+<!--
+A string is just a pointer to the first char; the length is found by walking to the 0 byte. That's why strlen is a loop and why a missing '\0' runs off the end (buffer overread).
+Industry: many C security bugs (Heartbleed-style) are string/buffer walks gone wrong.
+-->
 
 ---
 
-## Understanding Check: Cross-Frame Pointer Mutation
-<Badge>Concept Check 3 • Double Pointers & Function Scope</Badge>
+<MCQ
+  label="Check 3 · Strings"
+  :code="[
+    'char s[] = &quot;stack&quot;;',
+    'char *p = s + 2;',
+    'printf(&quot;%c %s&quot;, *p, p + 1);'
+  ]"
+  question="What is printed?"
+  :options="['a ck', 't ack', 'a ack', 'c k']"
+  answer="A"
+  :timer="60"
+  timer-title="60 s"
+>
+  <template #explanation>
+    <p><code>p</code> points at <code>s[2]</code>, which is <code>'a'</code>, so <code>*p</code> prints <code>a</code>.</p>
+    <p><code>%s</code> prints from <code>p + 1</code> up to <code>'\0'</code>: <code>ck</code>.</p>
+  </template>
+</MCQ>
+
+---
+
+```yaml
+clicks: 3
+```
+
+# Double pointers: a pointer to a pointer
+
+<div class="mt-8">
+<MemoryRow
+  :step="$clicks"
+  :cells="[
+    { addr: '0x1000', value: '42', name: 'val', highlightAt: [3] },
+    { addr: '0x1004', value: '0x1000', name: 'int *ptr', pointsTo: 0, showAt: 1, highlightAt: [2] },
+    { addr: '0x1008', value: '0x1004', name: 'int **pp', pointsTo: 1, showAt: 2 },
+  ]"
+/>
+</div>
+
+<div class="grid grid-cols-2 gap-6 mt-4">
+
+```c
+void set_null(int **pp) {
+    *pp = NULL;   // changes the CALLER's pointer
+}
+set_null(&ptr);
+```
+
+<div class="text-2xl space-y-2">
+<div v-click="1"><code>int *ptr = &val;</code></div>
+<div v-click="2"><code>int **pp = &ptr;</code> → <code>*pp</code> is ptr</div>
+<div v-click="3"><code>**pp</code> is val: two hops</div>
+</div>
+</div>
+
+<TutorLink example="double_pointers" label="Step through double pointers" />
+
+<!--
+C passes arguments by value. To let a function change where YOUR pointer points (allocate for you, retarget it), pass its address: an int**.
+Industry: every "out parameter" API: getline(&buf, &n, f), strtol(s, &end, 10), main(int argc, char **argv).
+-->
+
+---
 
 <MCQ
-  context="Consider this classic problem involving double pointers and function calls:"
+  label="Check 4 · Double pointers"
   :code="[
     'void modify(int **p, int *q) {',
-    '    *p = q;',
-    '    **p = 40;',
+    '    *p = q;  **p = 40;',
     '}',
-    'int main() {',
-    '    int a = 10, b = 20;',
-    '    int *p1 = &a;',
-    '    modify(&p1, &b);',
-    '    printf(&quot;%d %d %d&quot;, a, b, *p1);',
-    '}'
+    'int a = 10, b = 20, *p1 = &a;',
+    'modify(&p1, &b);'
   ]"
-  question="What is printed by the program?"
-  :options="[
-    'A) 40 20 40',
-    'B) 10 20 40',
-    'C) 10 40 40',
-    'D) 40 40 40'
-  ]"
+  question="What does printf(&quot;%d %d %d&quot;, a, b, *p1) print?"
+  :options="['40 20 40', '10 20 40', '10 40 40', '40 40 40']"
   answer="C"
   :timer="120"
-  timer-title="Concept Check 3 • 2-Min Timer"
+  timer-title="2 min"
   tutor-example="quiz_double_pointers"
-  tutor-label="Step Through Quiz 3 in C Memory Tutor"
 >
   <template #explanation>
-    <ol class="text-xs space-y-1">
-      <li><code>main</code> passes <code>&p1</code> (address of pointer <code>p1</code>). Inside <code>modify</code>, <code>p</code> points to <code>p1</code>.</li>
-      <li><code>*p = q;</code> accesses <code>p1</code> in <code>main</code>'s frame and retargets it to <code>b</code>.</li>
-      <li><code>**p = 40;</code> writes <code>40</code> directly into <code>b</code>!</li>
-      <li><code>a</code> was untouched (<code>10</code>). <code>b</code> is <code>40</code>. <code>*p1</code> is <code>40</code>. Output: <code>10 40 40</code>.</li>
-    </ol>
+    <p><code>*p = q</code> retargets <code>p1</code> (in main) to <code>b</code>.</p>
+    <p><code>**p = 40</code> writes into <code>b</code>. <code>a</code> is untouched: <code>10 40 40</code>.</p>
   </template>
 </MCQ>
 
 ---
 
-# Arrays in Memory & The Array Decay Rule
-<Badge>Building Block 5 • Contiguous Memory & Multidimensional Layout</Badge>
+# Pointer to an array: `int (*row)[4]`
 
-In C, an array is a **single, unbroken contiguous sequence of memory cells** stored without extra overhead, bounds checking, or length metadata.
-
-<div class="grid grid-cols-2 gap-4 my-2">
-<Card title="1D Array Decay & Indexing Identity" type="info">
+<div class="grid grid-cols-2 gap-8 mt-6">
+<div>
 
 ```c
-int a[3] = {10, 20, 30};
-int *p = a; // Decays to &a[0]
-```
-- **Array Decay**: `a` decays to pointer to element 0 (`&a[0]`).
-- **Bracket Identity**: $a[i] \equiv *(a + i)$. Commutative: `i[a]` is identical!
-- **Byte Stride**: `p + 1` advances by `sizeof(int) = 4` bytes.
-</Card>
+int m[3][4];          // 3 rows of 4 ints
+int (*row)[4] = m;    // pointer to a whole row
+row + 1;              // jumps 16 bytes: next row
 
-<Card title="Multidimensional 2D Arrays & Row Pointers" type="tip">
-
-```c
-int matrix[3][4];           // 3 rows × 4 cols (48 bytes)
-int (*row_ptr)[4] = matrix; // Pointer to row of 4 ints!
+int *arr[4];          // NOT the same: 4 pointers
 ```
-- **Row Stride**: `row_ptr + 1` advances by 16 bytes.
-- **2D Identity**: $m[i][j] \equiv *(*(m + i) + j)$.
-- **Critical Syntax**: `int (*ptr)[4]` is a row pointer; `int *ptr[4]` is an array of 4 pointers.
-</Card>
+
+</div>
+<div class="row-grid">
+  <div class="rg-label">row →</div><div class="rg-row hl"><span>1</span><span>2</span><span>3</span><span>4</span></div>
+  <div class="rg-label">row + 1 →</div><div class="rg-row"><span>5</span><span>6</span><span>7</span><span>8</span></div>
+  <div class="rg-label">row + 2 →</div><div class="rg-row"><span>9</span><span>10</span><span>11</span><span>12</span></div>
+</div>
 </div>
 
-<TutorLink example="arrays" label="Step Through Arrays in C Memory Tutor" />
+$$\texttt{row + i} = \text{address}(\texttt{row}) + i \times \texttt{sizeof(int[4])} \qquad \texttt{m[i][j]} \equiv \texttt{*(*(m + i) + j)}$$
+
+<TutorLink example="arrays" label="Step through arrays in the Tutor" />
+
+<style>
+.row-grid { display: grid; grid-template-columns: auto 1fr; gap: 0.5rem 0.8rem; align-items: center; font-size: 1.4rem; }
+.rg-label { font-family: 'JetBrains Mono', monospace; color: #d49b53; text-align: right; }
+.rg-row { display: grid; grid-template-columns: repeat(4, 1fr); border: 2px solid #383733; border-radius: 0.4rem; }
+.rg-row span { text-align: center; padding: 0.35rem 0; border-right: 1px solid #383733; font-family: 'JetBrains Mono', monospace; }
+.rg-row span:last-child { border-right: none; }
+.rg-row.hl { border-color: #cc785c; }
+</style>
+
+<!--
+Memory is still one flat street: 12 ints in a row. The pointer's TYPE decides the step size: int* steps 4 bytes, int (*)[4] steps a whole 16-byte row.
+The parentheses matter. The next slide shows how to read declarations like this.
+-->
 
 ---
 
-## Understanding Check: 2D Array Pointer Offsets
-<Badge>Concept Check 4 • Multidimensional Pointer Decay</Badge>
+```yaml
+clicks: 4
+```
+
+# Reading declarations (K&R §5.12)
+
+<div class="text-xl opacity-80 mb-4">Start at the name. Go <strong>right</strong> (<code>[]</code>, <code>()</code>) before <strong>left</strong> (<code>*</code>). Parentheses first.</div>
+
+<div class="space-y-6">
+<DeclRead
+  :step="$clicks"
+  :tokens="[{t:'int',n:4},{t:'('},{t:'*',n:2},{t:'row',n:1},{t:')'},{t:'[4]',n:3}]"
+  :say="['row is', 'a pointer to', 'an array of 4', 'ints']"
+/>
+<DeclRead
+  :step="$clicks"
+  :tokens="[{t:'int',n:4},{t:'*',n:3},{t:'arr',n:1},{t:'[4]',n:2}]"
+  :say="['arr is', 'an array of 4', 'pointers to', 'int']"
+/>
+</div>
+
+<div v-click="4" class="mt-6 grid grid-cols-2 gap-x-8 gap-y-1 text-lg font-mono">
+<div><code>char **argv</code></div><div class="font-sans">pointer to pointer to char</div>
+<div><code>void *comp()</code></div><div class="font-sans">function returning pointer to void</div>
+<div><code>void (*comp)()</code></div><div class="font-sans">pointer to function returning void</div>
+</div>
+
+<!--
+Same tokens, different order, totally different types: that's why int (*row)[4] needs the parentheses.
+The table is from K&R §5.12 "Complicated Declarations". Ask the class to read void (*comp)() aloud before revealing.
+Tool tip: cdecl.org translates declarations to English.
+-->
+
+---
 
 <MCQ
-  context="Consider this tricky question testing 2D array memory layout:"
+  label="Check 5 · Row pointers"
   :code="[
-    'int arr[3][4] = {',
-    '    {1,  2,  3,  4},',
-    '    {5,  6,  7,  8},',
-    '    {9, 10, 11, 12}',
-    '};',
+    'int arr[3][4] = {{1,2,3,4}, {5,6,7,8}, {9,10,11,12}};',
     'int (*ptr)[4] = arr;',
     'ptr++;',
-    'int first = *(*ptr + 2);',
+    'int first  = *(*ptr + 2);',
     'int second = *(*(ptr + 1) - 1);'
   ]"
-  question="What are the values of first and second?"
-  :options="[
-    'A) first = 7,  second = 11',
-    'B) first = 7,  second = 8',
-    'C) first = 6,  second = 9',
-    'D) first = 3,  second = 7'
-  ]"
+  question="What are first and second?"
+  :options="['first = 7, second = 11', 'first = 7, second = 8', 'first = 6, second = 9', 'first = 3, second = 7']"
   answer="B"
   :timer="120"
-  timer-title="Concept Check 4 • 2-Min Timer"
+  timer-title="2 min"
   tutor-example="quiz_arrays"
-  tutor-label="Step Through Quiz 4 in C Memory Tutor"
 >
   <template #explanation>
-    <ol class="text-xs space-y-1">
-      <li><code>int (*ptr)[4]</code> points to rows of 4 ints. <code>ptr++</code> advances to row 1 (<code>{5, 6, 7, 8}</code>).</li>
-      <li><code>*ptr + 2</code> points to <code>arr[1][2] = 7</code>, so <code>first = 7</code>.</li>
-      <li><code>*(ptr + 1)</code> is <code>&arr[2][0]</code>. Subtracting <code>1</code> moves back 1 int to <code>arr[1][3] = 8</code>!</li>
-      <li>Result: <code>first = 7, second = 8</code>.</li>
-    </ol>
+    <p><code>ptr++</code> jumps one whole row, to <code>{5, 6, 7, 8}</code>; <code>*ptr + 2</code> is <code>arr[1][2]</code> = 7.</p>
+    <p><code>*(ptr + 1)</code> is <code>&amp;arr[2][0]</code>; one int back is <code>arr[1][3]</code> = 8.</p>
   </template>
 </MCQ>
 
 ---
 
-# Void Pointers (void*): The Universal Byte Pointer
-<Badge>Building Block 6 • Generic Memory</Badge>
+# The stack frame is small. The heap is big and yours to manage.
 
-In C, how can we reference memory when we don't know the data type in advance? We use a **void pointer** (`void*`).
+```c {1|2|3-4|5}
+int *nums = malloc(4 * sizeof(int));     // ask the heap for 16 bytes
+nums[0] = 10;                            // use it like an array
+int *bigger = realloc(nums, 8 * sizeof(int));
+if (bigger) nums = bigger;               // block may MOVE to a new address
+free(nums);                              // give it back exactly once
+```
 
-<div class="grid grid-cols-2 gap-4 my-2">
-<Card title="What is void*?" type="info">
+<TutorLink example="dynamic_memory" label="Step through malloc / realloc / free" />
 
-- A `void*` is a generic pointer that can hold the address of **any data type** without casting:
-  ```c
-  void *vp;
-  int x = 42;
-  double d = 3.14;
-  vp = &x; // Perfectly valid
-  vp = &d; // Also perfectly valid!
-  ```
-</Card>
-
-<Card title="Strict Rules of void*" type="caution">
-
-Because `void` has no size (`sizeof(void)` is unknown):
-1. **You CANNOT dereference `*vp` directly** (Compile error!).
-2. **You CANNOT perform arithmetic `vp + 1` directly**.
-3. **To step by bytes**: cast to `(char*)vp + offset`!
-4. **To copy memory**: use `memcpy(dest, src, num_bytes)`.
-</Card>
-</div>
-
-<TutorLink example="void_pointers" label="Step Through Void Pointers in C Memory Tutor" />
+<!--
+Local variables vanish when the function returns. malloc gives memory that lives until you free it.
+Key teaching point for later: realloc may move the block.
+-->
 
 ---
 
-## Understanding Check: Generic Memory Swap with void*
-<Badge>Concept Check 5 • Generic Memory & memcpy</Badge>
+```yaml
+clicks: 6
+```
+
+# How `realloc` grows a block
+
+<div class="flex items-start gap-6">
+
+```c
+items = realloc(items, 4 * sizeof(int));
+items[2] = 30;
+```
+
+<TutorLink example="realloc_moves" label="Step through what realloc does" />
+
+</div>
+
+<ReallocViz :step="$clicks" />
+
+<!--
+Click through the 7 steps. Stress: realloc = allocate new + copy + free old + return new address.
+Optimisation worth mentioning: if the bytes right after the block are free, realloc can grow in place and skip the copy. You can't know which happens, so always use the returned pointer.
+Industry link: C++ std::vector, Rust Vec and Go slices grow exactly this way; "iterator invalidation" is the dangling pointer in step 7.
+-->
+
+---
+
+# `void*` — a pointer that forgot its type
+
+```c {1|2|3-4}
+void *raw = &x;                     // any address fits
+// *raw;                            // ✗ compiler: how many bytes?
+memcpy(&copy, raw, sizeof(int));    // ✓ you supply the size
+```
+
+<div class="mt-6 grid grid-cols-2 gap-6">
+<InIndustry where="C standard library" icon="📚">
+<code>malloc</code>, <code>memcpy</code>, <code>qsort</code> all speak <code>void*</code> + a size.
+</InIndustry>
+<InIndustry where="Linux kernel · Redis · SQLite" icon="🐧">
+Generic containers in C = <code>void*</code> + <code>elem_size</code>.
+</InIndustry>
+</div>
+
+<TutorLink example="void_pointers" label="Step through void* in the Tutor" />
+
+---
 
 <MCQ
-  context="Consider the following implementation of a type-agnostic swap function in C:"
+  label="Check 6 · void* swap"
   :code="[
-    '#include <stdio.h>',
-    '#include <string.h>',
-    'void generic_swap(void *a, void *b, size_t size) {',
-    '    char temp[16];',
-    '    memcpy(temp, a, size);',
-    '    memcpy(a, b, size);',
-    '    memcpy(b, temp, size);',
+    'void generic_swap(void *a, void *b, size_t n) {',
+    '    char t[16];',
+    '    memcpy(t, a, n);  memcpy(a, b, n);  memcpy(b, t, n);',
     '}',
-    'int main() {',
-    '    int arr[] = {10, 20, 30, 40};',
-    '    generic_swap(&arr[1], &arr[3], sizeof(int));',
-    '    printf(&quot;%d %d %d %d&quot;, arr[0], arr[1], arr[2], arr[3]);',
-    '}'
+    'int arr[] = {10, 20, 30, 40};',
+    'generic_swap(&arr[1], &arr[3], sizeof(int));'
   ]"
-  question="What will be printed when this program runs?"
-  :options="[
-    'A) 10 40 30 20',
-    'B) 10 20 30 40',
-    'C) 40 30 20 10',
-    'D) Segmentation fault'
-  ]"
+  question="What does arr hold now?"
+  :options="['10 40 30 20', '10 20 30 40', '40 30 20 10', 'Segmentation fault']"
   answer="A"
-  :timer="120"
-  timer-title="Concept Check 5 • 2-Min Timer"
+  :timer="90"
+  timer-title="90 s"
   tutor-example="quiz_void_pointers"
-  tutor-label="Step Through Quiz 5 in C Memory Tutor"
 >
   <template #explanation>
-    <ol class="text-xs space-y-1">
-      <li><code>&arr[1]</code> and <code>&arr[3]</code> are passed into <code>void*</code> pointers.</li>
-      <li><code>memcpy</code> moves exactly <code>sizeof(int) = 4</code> bytes via scratch buffer <code>temp</code>.</li>
-      <li>Elements at index 1 and 3 swap cleanly: <code>arr</code> is <code>{10, 40, 30, 20}</code>.</li>
-    </ol>
+    <p><code>memcpy</code> moves exactly <code>sizeof(int)</code> = 4 bytes through <code>t</code>.</p>
+    <p>Elements 1 and 3 swap: <code>{10, 40, 30, 20}</code>. GenericStack copies items exactly this way.</p>
   </template>
 </MCQ>
 
 ---
 
-# The Stack Data Structure: The Cafeteria Plate Analogy
-<Badge>Core Data Structure • The Plate Dispenser</Badge>
+```yaml
+clicks: 6
+```
 
-Imagine a **spring-loaded tray dispenser of cafeteria plates** in a dining hall:
+# The Stack: one rule
 
-<div class="grid grid-cols-2 gap-4 my-2">
-<Card title="The Cafeteria Plate Rules" type="info">
+<div class="grid grid-cols-2 gap-8 items-center mt-4">
+<StackViz :ops="['push 10','push 20','push 30','pop','push 40','pop']" :step="$clicks" />
 
-- **Push (Add a Plate)**: You place a clean plate onto the top of the stack. The spring compresses.
-- **Pop (Take a Plate)**: A diner takes the plate sitting on the very top.
-- **LIFO (Last-In, First-Out)**: The plate placed on top most recently is the first one taken!
-- **Physical Constraint**: You can **never** pull a plate out from the middle without breaking the stack!
-</Card>
+<div class="text-2xl leading-relaxed">
 
-<Card title="Systems Applications of the Stack" type="tip">
+**push** → add on top
 
-- **CPU Call Stack**: Function call frames (local variables, return address) are pushed and popped.
-- **Undo / Redo Buffer**: Actions are pushed; Ctrl+Z pops the most recent action.
-- **Syntax Matching**: Checking balanced parentheses `((()))` in compilers.
-</Card>
+**pop** → remove from top
+
+**peek** → look at top
+
+</div>
+</div>
+
+<!--
+Click through slowly; ask the class to predict each pop before you click.
+-->
+
+---
+
+<BigIdea kicker="LIFO">
+Last in, first out.<br/>You can only touch the top.
+</BigIdea>
+
+---
+
+# Where you've already used a stack today
+
+<div class="grid grid-cols-2 gap-5 mt-6">
+<InIndustry where="Your editor · Ctrl+Z" icon="↩️">Every edit is pushed; undo pops the latest.</InIndustry>
+<InIndustry where="Browser Back button" icon="🌐">Each page you visit is pushed onto history.</InIndustry>
+<InIndustry where="Function calls" icon="🧵">Each call pushes a frame; <code>return</code> pops it.</InIndustry>
+<InIndustry where="Compilers · spreadsheets" icon="🧮">Parsing <code>(3 + 4) * 2</code> uses an operator stack.</InIndustry>
 </div>
 
 ---
 
-# Building an Integer Stack in C (IntStack)
-<Badge>Implementation Architecture • Dynamic Memory</Badge>
-
-```c
-typedef struct { int *items; int capacity, top; } IntStack;
+```yaml
+clicks: 5
 ```
 
-<div class="grid grid-cols-2 gap-4 my-2">
-<Card title="Push Operation" type="info">
+# Build it: `IntStack`
 
-```c
-void push(IntStack *s, int plate) {
+<div class="grid grid-cols-[1.25fr_1fr] gap-6 items-start">
+
+```c {1-5|7-9|10-14|15|all}
+typedef struct {
+    int *items;     // heap array
+    int capacity;   // slots allocated
+    int top;        // slots used
+} IntStack;
+
+bool int_stack_push(IntStack *s, int v) {
     if (s->top == s->capacity) {
-        s->capacity *= 2;
-        s->items = realloc(s->items, s->capacity * sizeof(int));
+        // full → double
+        int *bigger = realloc(s->items,
+                  2 * s->capacity * sizeof(int));
+        if (!bigger) return false;
+        s->items = bigger;  s->capacity *= 2;
     }
-    s->items[s->top++] = plate;
+    s->items[s->top++] = v;
+    return true;
 }
 ```
-</Card>
 
-<Card title="Pop Operation" type="tip">
-
-```c
-int pop(IntStack *s) {
-    if (s->top == 0) return -1; // Empty
-    return s->items[--s->top];
-}
-```
-When `top == 0`, the dispenser is empty!
-</Card>
+<div>
+<StackViz :ops="['push 1','push 2','push 3','pop','push 4']" :capacity="2" :step="$clicks" />
+<TutorLink example="int_stack" label="Run IntStack in the Tutor" />
+</div>
 </div>
 
-<TutorLink example="int_stack" label="Step Through IntStack in C Memory Tutor" />
+<!--
+Point at the sv-caption when capacity doubles. Doubling means copies are rare: most pushes just write one slot.
+-->
 
 ---
-
-## Understanding Check: Stack Permutation Validity
-<Badge>Concept Check 6 • LIFO Permutation Constraints</Badge>
 
 <MCQ
-  context="A stack initially empty is subjected to push operations for elements 1, 2, 3, 4, 5 in that exact order. Elements may be popped at any intermediate step."
-  question="Which of the following output sequences is IMPOSSIBLE to generate?"
-  :options="[
-    'A) 3, 4, 5, 2, 1',
-    'B) 2, 4, 3, 5, 1',
-    'C) 1, 5, 2, 4, 3',
-    'D) 4, 5, 3, 2, 1'
-  ]"
+  label="Check 7 · LIFO"
+  context="Push 1, 2, 3, 4, 5 in order. You may pop at any time."
+  question="Which output order is IMPOSSIBLE?"
+  :options="['3 4 5 2 1', '2 4 3 5 1', '1 5 2 4 3', '4 5 3 2 1']"
   answer="C"
-  :timer="120"
-  timer-title="Concept Check 6 • 2-Min Timer"
+  :timer="90"
+  timer-title="90 s"
   tutor-example="quiz_int_stack"
-  tutor-label="Step Through Quiz 6 in C Memory Tutor"
 >
   <template #explanation>
-    <ol class="text-xs space-y-1">
-      <li>Outputting <code>1</code> pops <code>1</code> immediately.</li>
-      <li>To output <code>5</code>, elements <code>2, 3, 4, 5</code> must be pushed.</li>
-      <li>Popping <code>5</code> leaves <code>4</code> on the top of the stack, followed by <code>3</code> and <code>2</code>.</li>
-      <li>Under LIFO discipline, <code>4</code> and <code>3</code> must be popped before <code>2</code> can ever be reached! Outputting <code>2</code> next is physically impossible.</li>
-    </ol>
+    <p>After popping 1 then 5, the stack holds <code>2 3 4</code> with <code>4</code> on top.</p>
+    <p><code>2</code> is buried — it can't come out before 4 and 3.</p>
   </template>
 </MCQ>
 
 ---
 
-# Building a Generic Stack in C
+# The interface: `generic_stack.h`
 
-A generic stack stores raw bytes using `void*` and `memcpy`; callers cast the popped pointer back to their concrete type.
+```c {all|1|3-6|8-9|11-12|all}
+GenericStack *generic_stack_create(size_t elem_size, int initial_capacity);
 
-<div class="grid grid-cols-2 gap-4 my-2">
-<Card title="1. Generic Push & Pop" type="info">
+// copies elem_size bytes IN from elem_addr
+bool generic_stack_push(GenericStack *s, const void *elem_addr);
+// copies the top element OUT into out_elem (pass NULL to discard)
+bool generic_stack_pop (GenericStack *s, void *out_elem);
 
-```c
-void push(GenericStack *s, const void *elem) {
-    int offset = s->top * s->elem_size;
-    void *target = (char*)s->elems + offset;
-    memcpy(target, elem, s->elem_size);
-    s->top++;
-}
-void* pop(GenericStack *s) {
-    if (s->top == 0) return NULL;
-    int offset = --s->top * s->elem_size;
-    return (char*)s->elems + offset;
-}
+bool generic_stack_peek(const GenericStack *s, void *out_elem);
+int  generic_stack_size(const GenericStack *s);
+
+// frees the buffer and the stack itself
+void generic_stack_destroy(GenericStack *s);
 ```
-Push copies bytes into offset; Pop decrements and returns `void*`.
+
+<div class="grid grid-cols-3 gap-4 mt-6 text-lg">
+<Card title="You choose the type" type="info">
+
+`elem_size = sizeof(T)` once, at create.
+
 </Card>
+<Card title="Values are copied" type="tip">
 
-<Card title="2. Type Restoration via Casting" type="tip">
+Push copies bytes in. Your variable can go away.
 
-```c
-// Store & retrieve int: elem_size = 4
-GenericStack *s = create_stack(sizeof(int), 4);
-int val = 42; push(s, &val);
-int popped = *(int*)pop(s); // void* -> int*
+</Card>
+<Card title="You own the stack" type="warning">
 
-// Store & retrieve char: elem_size = 1
-GenericStack *cs = create_stack(sizeof(char), 4);
-char letter = 'Z'; push(cs, &letter);
-char ch = *(char*)pop(cs);   // void* -> char*
-```
-Flat buffers hold no types; caller must cast explicitly.
+Every `create` needs one `destroy`.
+
 </Card>
 </div>
+
+<!--
+This is the contract users of the library rely on. They never touch elems, top or capacity.
+Next lesson we build a feature using only these functions.
+-->
 
 ---
 
-# Comprehensive Summary: Pointers, Memory & Stacks
-<Badge>Lecture Review • Key Takeaways & Cheatsheet</Badge>
+# Inside: one stack for every type
 
-Here is your end-to-end mental model for low-level memory management and generic data structures in C:
+```c {1-6|8-9|10-11|all}
+typedef struct {
+    void  *elems;      // raw bytes on the heap
+    size_t elem_size;  // sizeof(T), chosen by the caller
+    int    capacity;
+    int    top;
+} GenericStack;
 
-<div class="grid grid-cols-2 gap-4 my-2">
-<Card title="1. Pointer Mechanics & Traps" type="info">
+// address of slot i = base + i * elem_size
+char *slot = (char *)s->elems + s->top * s->elem_size;
+memcpy(slot, elem_addr, s->elem_size);   // copy the bytes in
+s->top++;
+```
 
-- **Address vs Value**: `&x` extracts location; `*p` reads/writes the target.
-- **Scaling Rule**: `p + 1` advances by $\mathtt{sizeof}(*p)$ bytes automatically.
-- **Pointer Difference**: `p2 - p1` returns the count of typed elements (`ptrdiff_t`).
-- **Double Pointers (`**`)**: Required when a helper function must alter where a caller's pointer points.
-- **Trap**: Always match `malloc` with `free(p)` and reset to `NULL` to avoid dangling pointers.
-</Card>
+<TutorLink example="generic_stack" label="Push a struct through GenericStack" />
 
-<Card title="2. Arrays, void* & Generic Data Structures" type="tip">
+<!--
+Everything from today combines here: heap (malloc/realloc), pointer arithmetic, void*, memcpy.
+-->
 
-- **Array Decay**: 1D arrays decay to `&a[0]`; 2D arrays decay to row pointer `int (*)[C]`.
-- **Bracket Identity**: $a[i] \equiv *(a + i)$ and $m[i][j] \equiv *(*(m + i) + j)$.
-- **Void Pointers (`void*`)**: Universal memory. Cast to `char*` for byte arithmetic; move memory via `memcpy`.
-- **Generic Stack**: LIFO plate dispenser backed by a flat heap buffer (`void* elems`), parameterized by `elem_size`.
-</Card>
-</div>
+---
+
+# Same code, any type
+
+```c
+GenericStack *pts = generic_stack_create(sizeof(Point), 4);
+Point p = { 3, 4 };
+generic_stack_push(pts, &p);          // copies 8 bytes
+
+GenericStack *names = generic_stack_create(sizeof(char *), 4);
+char *who = "Ada";
+generic_stack_push(names, &who);      // copies one pointer
+```
+
+<InIndustry where="Production C: Redis, nginx, SQLite, the Linux kernel" icon="🏭">
+This "void* + elem_size" pattern is how C codebases build reusable containers.
+</InIndustry>
+
+---
+
+<MCQ
+  label="Check 8 · realloc"
+  question="Before a push grows the stack, you saved int *top = &s->items[s->top - 1]. After the push, *top is…"
+  :options="['Always still valid', 'Possibly dangling — realloc may have moved the block', 'A compile error', 'Freed by push automatically']"
+  answer="B"
+  :timer="60"
+  timer-title="60 s"
+  tutor-example="realloc_moves"
+>
+  <template #explanation>
+    <p><code>realloc</code> may copy the data to a new address and free the old block.</p>
+    <p>Pointers into the old buffer dangle — the same "iterator invalidation" bug as <code>std::vector</code>.</p>
+  </template>
+</MCQ>
+
+---
+
+<BigIdea kicker="Takeaway">
+A generic stack is just a heap buffer, a size, and a top index — plus the discipline to only touch the top.
+</BigIdea>

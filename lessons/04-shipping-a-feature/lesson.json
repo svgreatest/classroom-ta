@@ -1,0 +1,16 @@
+{
+  "id": "04-shipping-a-feature",
+  "code": "Lesson 04",
+  "title": "Shipping a Feature with GenericStack",
+  "course": "CS 201: Data Structures & Systems Programming",
+  "topic": "Code reuse, interfaces, tests & code review: Browser Back / Forward",
+  "date": "2026-10-17",
+  "author": "Classroom Teaching Assistant",
+  "files": [
+    "code/browser_history.h",
+    "code/browser_history.c",
+    "code/test_history.c",
+    "code/demo_browser.c",
+    "code/Makefile"
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "name": "slidev-addon-classroom-ta",
+  "private": true,
+  "description": "Shared components and styles for every Classroom TA lesson deck",
+  "keywords": ["slidev-addon", "slidev"],
+  "engines": { "slidev": ">=0.48.0" }
+}

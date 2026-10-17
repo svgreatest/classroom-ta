@@ -1,4 +1,6 @@
 ---
+addons:
+  - "@/../../slidev"
 theme: default
 background: '#181816'
 title: "01: AVL Trees & Self-Balancing Rotations"
@@ -119,7 +121,7 @@ AVLNode* avl_rotate_left(AVLNode* x) {
 
 <Card title="Verification Suite" type="info">
 
-- **O(1) Rotations**: Exact local pointer adjustments.
+- **$\mathcal{O}(1)$ Rotations**: Exact local pointer adjustments.
 - **TDD Rigor**: Tested across 311 programmatic tree permutations.
 - **Memory**: Height cached directly on node struct.
 </Card>

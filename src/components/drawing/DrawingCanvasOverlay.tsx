@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { Eraser, RotateCcw, Trash2, Pen, Highlighter, Type, X } from 'lucide-react';
+import { Eraser, RotateCcw, Trash2, Pen, Highlighter, Type, X, Sparkles } from 'lucide-react';
+import { laserOpacity, laserExpired } from './laser';
 
 interface DrawingCanvasOverlayProps {
   slideKey: string;
@@ -18,6 +19,10 @@ interface Stroke {
   width: number;
   isHighlighter: boolean;
 }
+
+type Tool = 'pen' | 'highlighter' | 'laser' | 'text' | 'eraser';
+
+const TOOL_KEYS: Record<string, Tool> = { p: 'pen', h: 'highlighter', l: 'laser', t: 'text', e: 'eraser' };
 
 interface TextAnnotation {
   id: string;
@@ -39,6 +44,14 @@ export const DrawingCanvasOverlay: React.FC<DrawingCanvasOverlayProps> = ({
   onClose
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const laserCanvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  // Laser strokes are ephemeral: kept in refs (no re-render per frame), never
+  // persisted, never part of undo. They fade together after the pen lifts.
+  const laserStrokesRef = useRef<StrokePoint[][]>([]);
+  const laserDrawingRef = useRef<boolean>(false);
+  const laserLastActivityRef = useRef<number | null>(null);
+  const laserFrameRef = useRef<number | null>(null);
 
   // Persistent storage of annotations per slide
   const [annotationsBySlide, setAnnotationsBySlide] = useState<Record<string, SlideAnnotations>>(() => {
@@ -61,7 +74,7 @@ export const DrawingCanvasOverlay: React.FC<DrawingCanvasOverlayProps> = ({
   const [color, setColor] = useState<string>('#facc15');
   const [penWidth, setPenWidth] = useState<number>(3);
   const [eraserSize, setEraserSize] = useState<number>(30); // 15, 30, 60, 100
-  const [tool, setTool] = useState<'pen' | 'highlighter' | 'text' | 'eraser'>('pen');
+  const [tool, setTool] = useState<Tool>('pen');
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
 
   const prevSlideKeyRef = useRef<string>(slideKey);
@@ -183,6 +196,10 @@ export const DrawingCanvasOverlay: React.FC<DrawingCanvasOverlayProps> = ({
     const resize = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
+      if (laserCanvasRef.current) {
+        laserCanvasRef.current.width = window.innerWidth;
+        laserCanvasRef.current.height = window.innerHeight;
+      }
       redraw();
     };
     resize();
@@ -193,6 +210,77 @@ export const DrawingCanvasOverlay: React.FC<DrawingCanvasOverlayProps> = ({
   useEffect(() => {
     redraw();
   }, [redraw]);
+
+  // Draw all laser strokes at the current fade level; keep animating until they expire
+  const renderLaser = useCallback(() => {
+    laserFrameRef.current = null;
+    const canvas = laserCanvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+    // The overlay mounts lazily, so this canvas can miss the resize effect
+    if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const now = performance.now();
+    const lastActivity = laserDrawingRef.current ? null : laserLastActivityRef.current;
+    if (laserExpired(lastActivity, now)) {
+      laserStrokesRef.current = [];
+      return;
+    }
+
+    ctx.save();
+    ctx.globalAlpha = laserOpacity(lastActivity, now);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    for (const points of laserStrokesRef.current) {
+      if (points.length === 0) continue;
+      const trace = () => {
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+        if (points.length === 1) ctx.lineTo(points[0].x + 0.1, points[0].y);
+        ctx.stroke();
+      };
+      // red glow, then a bright core
+      ctx.shadowColor = '#ff2d2d';
+      ctx.shadowBlur = 18;
+      ctx.strokeStyle = '#ff3b3b';
+      ctx.lineWidth = 7;
+      trace();
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = '#ffe4e4';
+      ctx.lineWidth = 2.5;
+      trace();
+    }
+    ctx.restore();
+
+    laserFrameRef.current = requestAnimationFrame(renderLaser);
+  }, []);
+
+  const scheduleLaser = useCallback(() => {
+    if (laserFrameRef.current === null) {
+      laserFrameRef.current = requestAnimationFrame(renderLaser);
+    }
+  }, [renderLaser]);
+
+  useEffect(() => () => {
+    if (laserFrameRef.current !== null) cancelAnimationFrame(laserFrameRef.current);
+  }, []);
+
+  // Tool shortcuts while the overlay is open (ignored while typing a text annotation)
+  useEffect(() => {
+    if (!isActive) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (activeTextInput || e.ctrlKey || e.metaKey || e.altKey) return;
+      const next = TOOL_KEYS[e.key.toLowerCase()];
+      if (next) setTool(next);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isActive, activeTextInput]);
 
   const performErase = (x: number, y: number) => {
     const radius = eraserSize;
@@ -232,6 +320,13 @@ export const DrawingCanvasOverlay: React.FC<DrawingCanvasOverlayProps> = ({
       e.currentTarget.setPointerCapture(e.pointerId);
     } catch (_) {}
 
+    if (tool === 'laser') {
+      laserStrokesRef.current.push([{ x, y }]);
+      laserDrawingRef.current = true;
+      scheduleLaser();
+      return;
+    }
+
     setCurrentStroke({
       points: [{ x, y }],
       color,
@@ -253,12 +348,27 @@ export const DrawingCanvasOverlay: React.FC<DrawingCanvasOverlayProps> = ({
       return;
     }
 
+    if (laserDrawingRef.current) {
+      laserStrokesRef.current[laserStrokesRef.current.length - 1]?.push({ x, y });
+      scheduleLaser();
+      return;
+    }
+
     if (currentStroke) {
       setCurrentStroke(prev => (prev ? { ...prev, points: [...prev.points, { x, y }] } : null));
     }
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (laserDrawingRef.current) {
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch (_) {}
+      laserDrawingRef.current = false;
+      laserLastActivityRef.current = performance.now();
+      scheduleLaser();
+      return;
+    }
     if (currentStroke) {
       try {
         e.currentTarget.releasePointerCapture(e.pointerId);
@@ -323,6 +433,25 @@ export const DrawingCanvasOverlay: React.FC<DrawingCanvasOverlayProps> = ({
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
       />
+      <canvas
+        ref={laserCanvasRef}
+        className="absolute inset-0 w-full h-full block pointer-events-none"
+      />
+
+      {/* Laser dot follows the pen, like a physical laser pointer */}
+      {isActive && tool === 'laser' && cursorPos && (
+        <div
+          className="fixed pointer-events-none rounded-full z-50 transform -translate-x-1/2 -translate-y-1/2"
+          style={{
+            left: cursorPos.x,
+            top: cursorPos.y,
+            width: 12,
+            height: 12,
+            background: '#ff3b3b',
+            boxShadow: '0 0 12px 4px rgba(255, 45, 45, 0.7)',
+          }}
+        />
+      )}
 
       {/* Eraser Outline Preview Cursor */}
       {isActive && tool === 'eraser' && cursorPos && (
@@ -396,6 +525,13 @@ export const DrawingCanvasOverlay: React.FC<DrawingCanvasOverlayProps> = ({
               <Highlighter className="w-4 h-4" />
             </button>
             <button
+              onClick={() => setTool('laser')}
+              title="Laser pointer: fades after you draw (L)"
+              className={`p-1.5 rounded transition ${tool === 'laser' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
+            >
+              <Sparkles className="w-4 h-4" />
+            </button>
+            <button
               onClick={() => setTool('text')}
               title="Type Text Tool (T)"
               className={`p-1.5 rounded transition ${tool === 'text' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
@@ -412,7 +548,9 @@ export const DrawingCanvasOverlay: React.FC<DrawingCanvasOverlayProps> = ({
           </div>
 
           {/* Tool specific options */}
-          {tool === 'eraser' ? (
+          {tool === 'laser' ? (
+            <span className="px-2 text-xs text-slate-400">Draw anything · fades in ~1s</span>
+          ) : tool === 'eraser' ? (
             /* Eraser Size Selector */
             <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
               {[

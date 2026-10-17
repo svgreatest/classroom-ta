@@ -32,7 +32,8 @@
 | :--- | :--- | :--- |
 | **`01-avl-trees`** | AVL Trees & Rotations | Fibonacci worst-case bounds, LL/RR/LR/RL rotations, 311 C TDD assertions |
 | **`02-hashmaps`** | Hash Maps & Collisions | Pigeonhole principle, SUHA, separate chaining vs open addressing |
-| **`03-pointers-and-stacks`** | Physical Memory & Stacks | Memory addresses, dereferencing, pointer arithmetic, `void*`, cafeteria plate stack model |
+| **`03-pointers-and-stacks`** | Pointers to a Generic Stack | Memory diagrams, pointer arithmetic, `realloc` & dangling pointers, `void*`, IntStack → GenericStack, industry tour (stack traces, undo, `std::vector`) |
+| **`04-shipping-a-feature`** | Shipping a Feature with GenericStack | Ticket → design → reuse → code → tests → code review → ship: browser Back/Forward built on lesson 03's GenericStack |
 
 ---
 
@@ -142,6 +143,37 @@ Features:
 - **Presenter Mode**: Access speaker notes, timer, and upcoming slide previews at `http://localhost:3030/presenter/`.
 - **Slide Overview**: View a grid overview of all slides at `http://localhost:3030/overview/`.
 - **Instant HMR**: Any slide changes are immediately hot-reloaded into both Slidev and the Classroom TA iframe.
+
+---
+
+## Authoring Lessons
+
+Every deck loads the shared component library and theme from `slidev/` as a local Slidev addon. Do not copy components into lesson folders:
+
+```yaml
+---
+addons:
+  - "@/../../slidev"
+---
+```
+
+### Slide rules (learn by showing)
+- One idea per slide, with **≤ 25 words of prose**. Put the details in presenter notes (`<!-- ... -->`).
+- Every slide has a visual: a diagram component, a code reveal, a Tutor demo or an image.
+- Close each concept with where it shows up in industry (`<InIndustry>`).
+
+### Components (`slidev/components/`)
+| Component | Use |
+| :--- | :--- |
+| `<MCQ>` | Large full-width question with 2×2 options. **Reveal answer** swaps the options for the explanation. Use the `label` prop for the header (e.g. `"Check 1 · LIFO"`). |
+| `<StackViz :ops="['push 1','pop']" :step="$clicks" />` | Animated stack, one op per click. Grows (realloc) automatically when full. Set `clicks: N` in the slide frontmatter. |
+| `<MemoryRow :cells="[...]" :step="$clicks" />` | Byte cells with addresses, variable names and pointer arrows (`pointsTo`), with `showAt`, `highlightAt` and `freed` per click. |
+| `<BigIdea kicker="...">` | One-sentence takeaway in very large type. |
+| `<InIndustry where="..." icon="...">` | A "where this is used at work" callout. |
+| `<TutorLink example="id">` | Opens a C Memory Tutor demo. |
+
+### Tutor demos without code changes
+Put `.c` files in `lessons/<id>/tutor/`. The file stem becomes the example id (`<TutorLink example="int_stack">`). An optional first line `// Title: ...` names the demo, and files named `quiz_*` are listed under Understanding Checks. A lesson demo replaces a built-in preset with the same id.
 
 ---
 

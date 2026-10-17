@@ -44,14 +44,14 @@ export const DEFAULT_LESSONS: LessonInfo[] = [
   {
     id: '03-pointers-and-stacks',
     code: 'Lesson 03',
-    title: 'Pointers, Structs & Generic Stacks',
-    topic: 'Memory Diagrams, Pointers, Structs & Generics'
+    title: 'Pointers to a Generic Stack',
+    topic: 'Memory, Pointers, realloc, void* & Stacks'
   },
   {
-    id: '04-stack-applications-and-recursion',
+    id: '04-shipping-a-feature',
     code: 'Lesson 04',
-    title: 'Case study: text editor',
-    topic: 'Undo/Redo & Expression Evaluation'
+    title: 'Shipping a Feature with GenericStack',
+    topic: 'Code Reuse, Interfaces, Tests & Code Review'
   }
 ];
 

@@ -17,6 +17,7 @@ HEAP_TRACKER_HEADER = """
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 typedef struct {
     void *addr;
@@ -53,7 +54,34 @@ static inline void __opt_track_free(void *p) {
     free(p);
 }
 
+static inline void* __opt_track_calloc(size_t n, size_t sz) {
+    void *p = __opt_track_malloc(n * sz);
+    if (p) memset(p, 0, n * sz);
+    return p;
+}
+
+// realloc may move the block: retire the old one and record the new one,
+// otherwise the visualizer keeps drawing the freed block and loses the new one.
+static inline void* __opt_track_realloc(void *old, size_t sz) {
+    void *p = realloc(old, sz);
+    if (!p) return NULL;
+    for (int i = 0; i < __opt_heap_count; i++) {
+        if (__opt_heap_blocks[i].active && __opt_heap_blocks[i].addr == old) {
+            __opt_heap_blocks[i].active = 0;
+        }
+    }
+    if (__opt_heap_count < 128) {
+        __opt_heap_blocks[__opt_heap_count].addr = p;
+        __opt_heap_blocks[__opt_heap_count].size = sz;
+        __opt_heap_blocks[__opt_heap_count].active = 1;
+        __opt_heap_count++;
+    }
+    return p;
+}
+
 #define malloc(sz) __opt_track_malloc(sz)
+#define calloc(n, sz) __opt_track_calloc(n, sz)
+#define realloc(p, sz) __opt_track_realloc(p, sz)
 #define free(p)    __opt_track_free(p)
 #line 1 "usercode.c"
 """

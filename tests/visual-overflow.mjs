@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import http from 'http';
 import { fileURLToPath } from 'url';
-import { spawn } from 'child_process';
+import { spawn, execSync } from 'child_process';
 import { chromium } from 'playwright-chromium';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -26,6 +26,19 @@ function checkHttp(url, timeoutMs = 2000) {
       resolve(false);
     });
   });
+}
+
+// Stop the app we launched. On Windows, kill() only stops the launcher, leaving Vite and
+// Slidev alive and holding our stdout open, so the test command never returns.
+function stopServer(child) {
+  if (!child) return;
+  if (process.platform === 'win32' && child.pid) {
+    try {
+      execSync(`taskkill /F /T /PID ${child.pid}`, { stdio: 'ignore' });
+      return;
+    } catch {}
+  }
+  child.kill();
 }
 
 // Wait for HTTP service
@@ -87,6 +100,60 @@ function getAvailableLessons() {
     .map(d => d.name);
 }
 
+// Minimum CSS font sizes (slide canvas px, before Slidev scales the canvas)
+const MCQ_MIN_OPTION_PX = 24;
+const MCQ_MIN_QUESTION_PX = 24;
+
+// Measure the active slide's MCQ: font sizes, then overflow with options and after Reveal.
+// Returns a failure reason, or '' when everything passes.
+async function checkMcqSlide(page, lessonScreenshotDir, slideNum) {
+  const inspect = () => page.evaluate(() => {
+    const layout = Array.from(document.querySelectorAll('.slidev-layout')).find(el => {
+      const r = el.getBoundingClientRect();
+      return r.width > 100 && r.height > 100;
+    });
+    const mcq = layout && layout.querySelector('.mcq');
+    if (!mcq) return { error: 'MCQ not found in active slide' };
+    const px = el => parseFloat(getComputedStyle(el).fontSize);
+    const parentRect = layout.getBoundingClientRect();
+    const overflow = Array.from(mcq.querySelectorAll('*')).reduce((worst, el) => {
+      const r = el.getBoundingClientRect();
+      if (r.width === 0 || r.height === 0 || el.closest('.katex-mathml')) return worst;
+      return Math.max(worst, Math.round(r.bottom - parentRect.bottom), Math.round(r.right - parentRect.right));
+    }, 0);
+    return {
+      optionPx: Array.from(mcq.querySelectorAll('.option-text')).map(px),
+      questionPx: Array.from(mcq.querySelectorAll('.mcq-question')).map(px),
+      hasOptions: !!mcq.querySelector('.options-grid'),
+      hasExplanation: !!mcq.querySelector('.explanation-card'),
+      hasReveal: !!mcq.querySelector('.btn-reveal'),
+      overflow
+    };
+  });
+
+  const before = await inspect();
+  if (before.error) return before.error;
+  const smallOption = before.optionPx.find(v => v < MCQ_MIN_OPTION_PX);
+  if (smallOption !== undefined) return `MCQ option font ${smallOption}px < ${MCQ_MIN_OPTION_PX}px`;
+  const smallQuestion = before.questionPx.find(v => v < MCQ_MIN_QUESTION_PX);
+  if (smallQuestion !== undefined) return `MCQ question font ${smallQuestion}px < ${MCQ_MIN_QUESTION_PX}px`;
+  if (before.overflow > 2) return `MCQ overflows slide by ${before.overflow}px`;
+  if (!before.hasReveal) return '';
+
+  await page.locator('.slidev-layout .mcq .btn-reveal:visible').first().click();
+  await page.waitForTimeout(350);
+  const revealed = await inspect();
+  await page.screenshot({ path: path.join(lessonScreenshotDir, `slide-${slideNum.toString().padStart(2, '0')}-revealed.png`) });
+  if (!revealed.hasExplanation || revealed.hasOptions) return 'MCQ Reveal did not swap options for the explanation';
+  if (revealed.overflow > 2) return `MCQ explanation overflows slide by ${revealed.overflow}px`;
+
+  await page.locator('.slidev-layout .mcq .btn-reveal:visible').first().click();
+  await page.waitForTimeout(250);
+  const back = await inspect();
+  if (!back.hasOptions || back.hasExplanation) return 'MCQ Back did not restore the options';
+  return '';
+}
+
 async function runTestSuite() {
   console.log('\n=============================================================');
   console.log('       CLASSROOM TA AUTOMATED VISUAL & OVERFLOW TEST SUITE    ');
@@ -111,7 +178,7 @@ async function runTestSuite() {
     const ready = await waitForHttp(PORTAL_URL, 35000);
     if (!ready) {
       console.error('ERROR: Could not launch or connect to server.');
-      if (spawnedServer) spawnedServer.kill();
+      stopServer(spawnedServer);
       process.exit(1);
     }
   }
@@ -171,6 +238,9 @@ async function runTestSuite() {
         await page.goto(slideUrl, { waitUntil: 'domcontentloaded' });
       }
       
+      // The first slide after a lesson switch can arrive before Slidev finishes compiling the deck
+      await page.waitForSelector('.slidev-layout', { state: 'attached', timeout: 30000 }).catch(() => {});
+
       // Let animations and math render
       await page.waitForTimeout(400);
 
@@ -190,7 +260,8 @@ async function runTestSuite() {
 
         // Query all visible descendants
         const allVisible = Array.from(activeLayout.querySelectorAll('*')).filter(el => {
-          if (el.closest('.sr-only')) return false;
+          // Screen-reader-only content, including KaTeX's MathML copy, is clipped out of view
+          if (el.closest('.sr-only, .katex-mathml')) return false;
           const style = window.getComputedStyle(el);
           if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
           const r = el.getBoundingClientRect();
@@ -238,9 +309,18 @@ async function runTestSuite() {
       let isPassed = true;
       let failureReason = '';
 
+      // A shared addon component that failed to resolve is left in the DOM as its raw tag
+      const unresolved = await page.evaluate(() =>
+        ['badge', 'card', 'mcq', 'questiontimer', 'tutorlink', 'stackviz', 'memoryrow', 'bigidea', 'inindustry']
+          .filter(tag => document.querySelector(`.slidev-layout ${tag}`))
+      );
+
       if (measurement.error) {
         isPassed = false;
         failureReason = measurement.error;
+      } else if (unresolved.length > 0) {
+        isPassed = false;
+        failureReason = `Unresolved slide component(s): ${unresolved.join(', ')}`;
       } else if (measurement.overflowsY.length > 0) {
         isPassed = false;
         const worst = measurement.overflowsY[0];
@@ -253,6 +333,20 @@ async function runTestSuite() {
 
       // Capture high-res screenshot
       await page.screenshot({ path: screenshotPath, fullPage: false });
+
+      // MCQ slides: readable from the back row, and Reveal/Back must not overflow
+      // Slidev keeps neighbouring slides in the DOM, so only look inside the visible layout
+      const hasMcq = await page.evaluate(() => Array.from(document.querySelectorAll('.slidev-layout')).some(el => {
+        const r = el.getBoundingClientRect();
+        return r.width > 100 && r.height > 100 && el.querySelector('.mcq');
+      }));
+      if (isPassed && hasMcq) {
+        const mcqFailure = await checkMcqSlide(page, lessonScreenshotDir, s);
+        if (mcqFailure) {
+          isPassed = false;
+          failureReason = mcqFailure;
+        }
+      }
 
       if (isPassed) {
         testResults.passedSlides++;
@@ -429,9 +523,7 @@ async function runTestSuite() {
   fs.writeFileSync(path.join(artifactsDir, 'test-summary.json'), JSON.stringify(testResults, null, 2), 'utf8');
 
   // Clean up if we spawned the server
-  if (spawnedServer) {
-    spawnedServer.kill();
-  }
+  stopServer(spawnedServer);
 
   // Final Summary Output
   console.log('\n=============================================================');

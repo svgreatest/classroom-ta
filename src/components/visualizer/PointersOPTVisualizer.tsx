@@ -849,7 +849,14 @@ int main() {
   }
 ];
 
+// Lesson demos (lessons/<id>/tutor/*.c) come first and replace built-in presets with the same id.
+export function mergeExamples(lessonExamples: ExamplePreset[], builtIn: ExamplePreset[] = EXAMPLES): ExamplePreset[] {
+  const lessonIds = new Set(lessonExamples.map(x => x.id));
+  return [...lessonExamples, ...builtIn.filter(x => !lessonIds.has(x.id))];
+}
+
 interface PointersOPTVisualizerProps {
+  lessonId?: string;
   selectedExampleId?: string;
   onSelectExampleId?: (id: string) => void;
   returnToSlideNumber?: number;
@@ -860,8 +867,10 @@ export const PointersOPTVisualizer: React.FC<PointersOPTVisualizerProps> = ({
   selectedExampleId,
   onSelectExampleId,
   returnToSlideNumber,
-  onReturnToSlides
+  onReturnToSlides,
+  lessonId
 }) => {
+  const [examples, setExamples] = useState<ExamplePreset[]>(EXAMPLES);
   const [selectedExample, setSelectedExample] = useState<ExamplePreset>(() => {
     if (selectedExampleId) {
       const found = EXAMPLES.find(x => x.id === selectedExampleId);
@@ -872,16 +881,30 @@ export const PointersOPTVisualizer: React.FC<PointersOPTVisualizerProps> = ({
   const [iframeKey, setIframeKey] = useState<number>(0);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  // Synchronize when parent passes updated selectedExampleId
+  useEffect(() => {
+    if (!lessonId) return;
+    let cancelled = false;
+    fetch(`/api/tutor-examples?lessonId=${encodeURIComponent(lessonId)}`)
+      .then(res => (res.ok ? res.json() : { examples: [] }))
+      .then(data => {
+        if (!cancelled) setExamples(mergeExamples(data.examples || []));
+      })
+      .catch(() => {
+        if (!cancelled) setExamples(EXAMPLES);
+      });
+    return () => { cancelled = true; };
+  }, [lessonId]);
+
+  // Synchronize when parent passes updated selectedExampleId, or when lesson demos arrive
   useEffect(() => {
     if (selectedExampleId) {
-      const found = EXAMPLES.find(x => x.id === selectedExampleId);
-      if (found && found.id !== selectedExample.id) {
+      const found = examples.find(x => x.id === selectedExampleId);
+      if (found && (found.id !== selectedExample.id || found.code !== selectedExample.code)) {
         setSelectedExample(found);
         setIframeKey(prev => prev + 1);
       }
     }
-  }, [selectedExampleId]);
+  }, [selectedExampleId, examples]);
 
   const handleSelectExample = (preset: ExamplePreset) => {
     setSelectedExample(preset);
@@ -932,20 +955,20 @@ export const PointersOPTVisualizer: React.FC<PointersOPTVisualizerProps> = ({
           <select
             value={selectedExample.id}
             onChange={(e) => {
-              const found = EXAMPLES.find(x => x.id === e.target.value);
+              const found = examples.find(x => x.id === e.target.value);
               if (found) handleSelectExample(found);
             }}
             className="bg-[#22221f] text-[#faf6ee] border border-[#383733] hover:border-[#cc785c] rounded-lg px-2.5 py-1 text-xs font-medium focus:outline-none transition cursor-pointer max-w-[220px] sm:max-w-[320px] truncate"
           >
             <optgroup label="Lesson Demonstrations">
-              {EXAMPLES.filter(ex => ex.category !== 'gate_quiz').map(ex => (
+              {examples.filter(ex => ex.category !== 'gate_quiz').map(ex => (
                 <option key={ex.id} value={ex.id}>
                   {ex.title}
                 </option>
               ))}
             </optgroup>
             <optgroup label="Understanding Checks">
-              {EXAMPLES.filter(ex => ex.category === 'gate_quiz').map(ex => (
+              {examples.filter(ex => ex.category === 'gate_quiz').map(ex => (
                 <option key={ex.id} value={ex.id}>
                   {ex.title}
                 </option>

@@ -142,6 +142,12 @@ export function createApiMiddleware(baseDir: string) {
       return;
     }
 
+    // 4b. Lesson Tutor Examples API (/api/tutor-examples?lessonId=)
+    if (pathname === '/api/tutor-examples' && req.method === 'GET') {
+      const lessonId = parsedUrl.searchParams.get('lessonId') || '';
+      return sendJson(200, { examples: lessonService.getTutorExamples(lessonId) });
+    }
+
     // 5. Code Examples API (/api/code-examples)
     if (pathname === '/api/code-examples') {
       if (req.method === 'GET') {

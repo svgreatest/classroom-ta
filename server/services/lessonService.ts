@@ -8,6 +8,13 @@ export interface LessonItem {
   topic: string;
 }
 
+export interface TutorExample {
+  id: string;
+  title: string;
+  category: 'lesson' | 'gate_quiz';
+  code: string;
+}
+
 export class LessonService {
   private lessonsRoot: string;
 
@@ -141,6 +148,29 @@ Walk through invariant proofs and pointer edge cases.
       return { content: fs.readFileSync(slidePath, 'utf8'), exists: true };
     }
     return { content: '', exists: false };
+  }
+
+  // C Tutor demos shipped with a lesson: lessons/<id>/tutor/<example-id>.c.
+  // An optional first line "// Title: ..." names the demo; "quiz_*" files are understanding checks.
+  public getTutorExamples(lessonId: string): TutorExample[] {
+    if (!/^[\w-]+$/.test(lessonId)) return [];
+    const tutorDir = path.join(this.lessonsRoot, lessonId, 'tutor');
+    if (!fs.existsSync(tutorDir)) return [];
+
+    return fs.readdirSync(tutorDir)
+      .filter(name => name.endsWith('.c'))
+      .sort()
+      .map(name => {
+        const id = name.slice(0, -2);
+        const code = fs.readFileSync(path.join(tutorDir, name), 'utf8');
+        const titleMatch = code.match(/^\/\/\s*Title:\s*(.+)$/m);
+        return {
+          id,
+          title: titleMatch ? titleMatch[1].trim() : id.replace(/_/g, ' '),
+          category: id.startsWith('quiz_') ? 'gate_quiz' as const : 'lesson' as const,
+          code
+        };
+      });
   }
 
   public saveSlides(lessonId: string, content: string): boolean {

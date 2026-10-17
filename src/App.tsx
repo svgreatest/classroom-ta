@@ -11,9 +11,9 @@ import { WhiteboardModal } from './components/drawing/WhiteboardModal';
 export const App: React.FC = () => {
   const [currentLessonId, setCurrentLessonId] = useState<LessonId>(() => {
     if (typeof window !== 'undefined') {
-      return (localStorage.getItem('classroom_ta_lesson') as LessonId) || '04-stack-applications-and-recursion';
+      return (localStorage.getItem('classroom_ta_lesson') as LessonId) || '03-pointers-and-stacks';
     }
-    return '04-stack-applications-and-recursion';
+    return '03-pointers-and-stacks';
   });
   const [lessonsList, setLessonsList] = useState<LessonInfo[]>(DEFAULT_LESSONS);
   const [activeTab, setActiveTab] = useState<'slides' | 'visualizer' | 'code'>('slides');
@@ -64,6 +64,10 @@ export const App: React.FC = () => {
       .then(data => {
         if (data.lessons && Array.isArray(data.lessons) && data.lessons.length > 0) {
           setLessonsList(data.lessons);
+          // A remembered lesson may have been deleted since the last visit
+          setCurrentLessonId(current =>
+            data.lessons.some((l: LessonInfo) => l.id === current) ? current : data.lessons[0].id
+          );
         }
       })
       .catch(err => console.error('Failed to load lessons list:', err));
@@ -198,6 +202,7 @@ export const App: React.FC = () => {
 
         <div className={`h-full w-full ${activeTab === 'visualizer' ? 'block' : 'hidden'}`}>
           {React.createElement(getVisualizerForLesson(currentLessonId).component, {
+            lessonId: currentLessonId,
             selectedExampleId: selectedTutorExample,
             onSelectExampleId: setSelectedTutorExample,
             returnToSlideNumber: currentSlide + 1,

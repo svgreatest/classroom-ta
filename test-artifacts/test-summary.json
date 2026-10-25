@@ -1,7 +1,7 @@
 {
-  "totalSlides": 52,
+  "totalSlides": 53,
   "passedSlides": 52,
-  "failedSlides": 0,
+  "failedSlides": 1,
   "slides": [
     {
       "lessonId": "01-avl-trees",
@@ -60,10 +60,8 @@
     {
       "lessonId": "02-hashmaps",
       "slideNumber": 1,
-      "passed": true,
-      "clearanceBottom": 13,
-      "clearanceRight": 82,
-      "failureReason": "",
+      "passed": false,
+      "failureReason": "No active slide layout element found",
       "screenshot": "screenshots/02-hashmaps/slide-01.png"
     },
     {
@@ -106,7 +104,7 @@
       "lessonId": "03-pointers-and-stacks",
       "slideNumber": 1,
       "passed": true,
-      "clearanceBottom": 82,
+      "clearanceBottom": 85,
       "clearanceRight": 82,
       "failureReason": "",
       "screenshot": "screenshots/03-pointers-and-stacks/slide-01.png"
@@ -115,7 +113,7 @@
       "lessonId": "03-pointers-and-stacks",
       "slideNumber": 2,
       "passed": true,
-      "clearanceBottom": 359,
+      "clearanceBottom": 224,
       "clearanceRight": 82,
       "failureReason": "",
       "screenshot": "screenshots/03-pointers-and-stacks/slide-02.png"
@@ -124,7 +122,7 @@
       "lessonId": "03-pointers-and-stacks",
       "slideNumber": 3,
       "passed": true,
-      "clearanceBottom": 201,
+      "clearanceBottom": 359,
       "clearanceRight": 82,
       "failureReason": "",
       "screenshot": "screenshots/03-pointers-and-stacks/slide-03.png"
@@ -133,7 +131,7 @@
       "lessonId": "03-pointers-and-stacks",
       "slideNumber": 4,
       "passed": true,
-      "clearanceBottom": 65,
+      "clearanceBottom": 201,
       "clearanceRight": 82,
       "failureReason": "",
       "screenshot": "screenshots/03-pointers-and-stacks/slide-04.png"
@@ -142,8 +140,8 @@
       "lessonId": "03-pointers-and-stacks",
       "slideNumber": 5,
       "passed": true,
-      "clearanceBottom": 68,
-      "clearanceRight": 81,
+      "clearanceBottom": 65,
+      "clearanceRight": 82,
       "failureReason": "",
       "screenshot": "screenshots/03-pointers-and-stacks/slide-05.png"
     },
@@ -160,8 +158,8 @@
       "lessonId": "03-pointers-and-stacks",
       "slideNumber": 7,
       "passed": true,
-      "clearanceBottom": 116,
-      "clearanceRight": 82,
+      "clearanceBottom": 68,
+      "clearanceRight": 81,
       "failureReason": "",
       "screenshot": "screenshots/03-pointers-and-stacks/slide-07.png"
     },
@@ -169,8 +167,8 @@
       "lessonId": "03-pointers-and-stacks",
       "slideNumber": 8,
       "passed": true,
-      "clearanceBottom": 140,
-      "clearanceRight": 81,
+      "clearanceBottom": 116,
+      "clearanceRight": 82,
       "failureReason": "",
       "screenshot": "screenshots/03-pointers-and-stacks/slide-08.png"
     },
@@ -178,8 +176,8 @@
       "lessonId": "03-pointers-and-stacks",
       "slideNumber": 9,
       "passed": true,
-      "clearanceBottom": 222,
-      "clearanceRight": 82,
+      "clearanceBottom": 140,
+      "clearanceRight": 81,
       "failureReason": "",
       "screenshot": "screenshots/03-pointers-and-stacks/slide-09.png"
     },
@@ -187,8 +185,8 @@
       "lessonId": "03-pointers-and-stacks",
       "slideNumber": 10,
       "passed": true,
-      "clearanceBottom": 68,
-      "clearanceRight": 81,
+      "clearanceBottom": 222,
+      "clearanceRight": 82,
       "failureReason": "",
       "screenshot": "screenshots/03-pointers-and-stacks/slide-10.png"
     },
@@ -196,8 +194,8 @@
       "lessonId": "03-pointers-and-stacks",
       "slideNumber": 11,
       "passed": true,
-      "clearanceBottom": 246,
-      "clearanceRight": 82,
+      "clearanceBottom": 68,
+      "clearanceRight": 81,
       "failureReason": "",
       "screenshot": "screenshots/03-pointers-and-stacks/slide-11.png"
     },
@@ -205,7 +203,7 @@
       "lessonId": "03-pointers-and-stacks",
       "slideNumber": 12,
       "passed": true,
-      "clearanceBottom": 13,
+      "clearanceBottom": 246,
       "clearanceRight": 82,
       "failureReason": "",
       "screenshot": "screenshots/03-pointers-and-stacks/slide-12.png"
@@ -214,8 +212,8 @@
       "lessonId": "03-pointers-and-stacks",
       "slideNumber": 13,
       "passed": true,
-      "clearanceBottom": 68,
-      "clearanceRight": 81,
+      "clearanceBottom": 13,
+      "clearanceRight": 82,
       "failureReason": "",
       "screenshot": "screenshots/03-pointers-and-stacks/slide-13.png"
     },
@@ -223,8 +221,8 @@
       "lessonId": "03-pointers-and-stacks",
       "slideNumber": 14,
       "passed": true,
-      "clearanceBottom": 363,
-      "clearanceRight": 82,
+      "clearanceBottom": 68,
+      "clearanceRight": 81,
       "failureReason": "",
       "screenshot": "screenshots/03-pointers-and-stacks/slide-14.png"
     },
@@ -232,7 +230,7 @@
       "lessonId": "03-pointers-and-stacks",
       "slideNumber": 15,
       "passed": true,
-      "clearanceBottom": 26,
+      "clearanceBottom": 363,
       "clearanceRight": 82,
       "failureReason": "",
       "screenshot": "screenshots/03-pointers-and-stacks/slide-15.png"
@@ -241,7 +239,7 @@
       "lessonId": "03-pointers-and-stacks",
       "slideNumber": 16,
       "passed": true,
-      "clearanceBottom": 295,
+      "clearanceBottom": 26,
       "clearanceRight": 82,
       "failureReason": "",
       "screenshot": "screenshots/03-pointers-and-stacks/slide-16.png"
@@ -250,8 +248,8 @@
       "lessonId": "03-pointers-and-stacks",
       "slideNumber": 17,
       "passed": true,
-      "clearanceBottom": 31,
-      "clearanceRight": 81,
+      "clearanceBottom": 295,
+      "clearanceRight": 82,
       "failureReason": "",
       "screenshot": "screenshots/03-pointers-and-stacks/slide-17.png"
     },
@@ -259,8 +257,8 @@
       "lessonId": "03-pointers-and-stacks",
       "slideNumber": 18,
       "passed": true,
-      "clearanceBottom": 314,
-      "clearanceRight": 82,
+      "clearanceBottom": 31,
+      "clearanceRight": 81,
       "failureReason": "",
       "screenshot": "screenshots/03-pointers-and-stacks/slide-18.png"
     },
@@ -268,7 +266,7 @@
       "lessonId": "03-pointers-and-stacks",
       "slideNumber": 19,
       "passed": true,
-      "clearanceBottom": 376,
+      "clearanceBottom": 314,
       "clearanceRight": 82,
       "failureReason": "",
       "screenshot": "screenshots/03-pointers-and-stacks/slide-19.png"
@@ -277,7 +275,7 @@
       "lessonId": "03-pointers-and-stacks",
       "slideNumber": 20,
       "passed": true,
-      "clearanceBottom": 310,
+      "clearanceBottom": 376,
       "clearanceRight": 82,
       "failureReason": "",
       "screenshot": "screenshots/03-pointers-and-stacks/slide-20.png"
@@ -286,7 +284,7 @@
       "lessonId": "03-pointers-and-stacks",
       "slideNumber": 21,
       "passed": true,
-      "clearanceBottom": 81,
+      "clearanceBottom": 310,
       "clearanceRight": 82,
       "failureReason": "",
       "screenshot": "screenshots/03-pointers-and-stacks/slide-21.png"
@@ -295,8 +293,8 @@
       "lessonId": "03-pointers-and-stacks",
       "slideNumber": 22,
       "passed": true,
-      "clearanceBottom": 250,
-      "clearanceRight": 81,
+      "clearanceBottom": 81,
+      "clearanceRight": 82,
       "failureReason": "",
       "screenshot": "screenshots/03-pointers-and-stacks/slide-22.png"
     },
@@ -304,8 +302,8 @@
       "lessonId": "03-pointers-and-stacks",
       "slideNumber": 23,
       "passed": true,
-      "clearanceBottom": 48,
-      "clearanceRight": 82,
+      "clearanceBottom": 250,
+      "clearanceRight": 81,
       "failureReason": "",
       "screenshot": "screenshots/03-pointers-and-stacks/slide-23.png"
     },
@@ -313,7 +311,7 @@
       "lessonId": "03-pointers-and-stacks",
       "slideNumber": 24,
       "passed": true,
-      "clearanceBottom": 234,
+      "clearanceBottom": 48,
       "clearanceRight": 82,
       "failureReason": "",
       "screenshot": "screenshots/03-pointers-and-stacks/slide-24.png"
@@ -322,7 +320,7 @@
       "lessonId": "03-pointers-and-stacks",
       "slideNumber": 25,
       "passed": true,
-      "clearanceBottom": 296,
+      "clearanceBottom": 234,
       "clearanceRight": 82,
       "failureReason": "",
       "screenshot": "screenshots/03-pointers-and-stacks/slide-25.png"
@@ -331,8 +329,8 @@
       "lessonId": "03-pointers-and-stacks",
       "slideNumber": 26,
       "passed": true,
-      "clearanceBottom": 39,
-      "clearanceRight": 81,
+      "clearanceBottom": 296,
+      "clearanceRight": 82,
       "failureReason": "",
       "screenshot": "screenshots/03-pointers-and-stacks/slide-26.png"
     },
@@ -340,8 +338,8 @@
       "lessonId": "03-pointers-and-stacks",
       "slideNumber": 27,
       "passed": true,
-      "clearanceBottom": 376,
-      "clearanceRight": 82,
+      "clearanceBottom": 39,
+      "clearanceRight": 81,
       "failureReason": "",
       "screenshot": "screenshots/03-pointers-and-stacks/slide-27.png"
     },
@@ -349,10 +347,19 @@
       "lessonId": "03-pointers-and-stacks",
       "slideNumber": 28,
       "passed": true,
-      "clearanceBottom": 82,
+      "clearanceBottom": 376,
       "clearanceRight": 82,
       "failureReason": "",
       "screenshot": "screenshots/03-pointers-and-stacks/slide-28.png"
+    },
+    {
+      "lessonId": "03-pointers-and-stacks",
+      "slideNumber": 29,
+      "passed": true,
+      "clearanceBottom": 85,
+      "clearanceRight": 82,
+      "failureReason": "",
+      "screenshot": "screenshots/03-pointers-and-stacks/slide-29.png"
     },
     {
       "lessonId": "04-shipping-a-feature",
@@ -394,7 +401,7 @@
       "lessonId": "04-shipping-a-feature",
       "slideNumber": 5,
       "passed": true,
-      "clearanceBottom": 56,
+      "clearanceBottom": 65,
       "clearanceRight": 82,
       "failureReason": "",
       "screenshot": "screenshots/04-shipping-a-feature/slide-05.png"
@@ -403,8 +410,8 @@
       "lessonId": "04-shipping-a-feature",
       "slideNumber": 6,
       "passed": true,
-      "clearanceBottom": 206,
-      "clearanceRight": 82,
+      "clearanceBottom": 68,
+      "clearanceRight": 81,
       "failureReason": "",
       "screenshot": "screenshots/04-shipping-a-feature/slide-06.png"
     },
@@ -412,8 +419,8 @@
       "lessonId": "04-shipping-a-feature",
       "slideNumber": 7,
       "passed": true,
-      "clearanceBottom": 226,
-      "clearanceRight": 82,
+      "clearanceBottom": 68,
+      "clearanceRight": 81,
       "failureReason": "",
       "screenshot": "screenshots/04-shipping-a-feature/slide-07.png"
     },
@@ -421,7 +428,7 @@
       "lessonId": "04-shipping-a-feature",
       "slideNumber": 8,
       "passed": true,
-      "clearanceBottom": 178,
+      "clearanceBottom": 116,
       "clearanceRight": 82,
       "failureReason": "",
       "screenshot": "screenshots/04-shipping-a-feature/slide-08.png"
@@ -430,8 +437,8 @@
       "lessonId": "04-shipping-a-feature",
       "slideNumber": 9,
       "passed": true,
-      "clearanceBottom": 25,
-      "clearanceRight": 82,
+      "clearanceBottom": 140,
+      "clearanceRight": 81,
       "failureReason": "",
       "screenshot": "screenshots/04-shipping-a-feature/slide-09.png"
     },
@@ -439,7 +446,7 @@
       "lessonId": "04-shipping-a-feature",
       "slideNumber": 10,
       "passed": true,
-      "clearanceBottom": 172,
+      "clearanceBottom": 222,
       "clearanceRight": 82,
       "failureReason": "",
       "screenshot": "screenshots/04-shipping-a-feature/slide-10.png"
@@ -448,7 +455,7 @@
       "lessonId": "04-shipping-a-feature",
       "slideNumber": 11,
       "passed": true,
-      "clearanceBottom": 250,
+      "clearanceBottom": 68,
       "clearanceRight": 81,
       "failureReason": "",
       "screenshot": "screenshots/04-shipping-a-feature/slide-11.png"
@@ -457,7 +464,7 @@
       "lessonId": "04-shipping-a-feature",
       "slideNumber": 12,
       "passed": true,
-      "clearanceBottom": 366,
+      "clearanceBottom": 246,
       "clearanceRight": 82,
       "failureReason": "",
       "screenshot": "screenshots/04-shipping-a-feature/slide-12.png"
@@ -466,7 +473,7 @@
       "lessonId": "04-shipping-a-feature",
       "slideNumber": 13,
       "passed": true,
-      "clearanceBottom": 66,
+      "clearanceBottom": 13,
       "clearanceRight": 82,
       "failureReason": "",
       "screenshot": "screenshots/04-shipping-a-feature/slide-13.png"
@@ -475,11 +482,8 @@
   "portalTests": [
     {
       "name": "Portal Slide View & BrandHeader",
-      "passed": true,
-      "screenshot": "screenshots/portal/portal_slide_view___brandheader.png",
-      "details": {
-        "title": "Classroom Teaching Assistant (Classroom TA) — Live CS Lectures"
-      }
+      "passed": false,
+      "error": "page.goto: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"networkidle\"\u001b[22m\n"
     },
     {
       "name": "Interactive Visualizer Tab Switch",

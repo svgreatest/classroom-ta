@@ -8,6 +8,9 @@ colorSchema: dark
 highlighter: shiki
 lineNumbers: true
 wakeLock: false
+# Off: Slidev's pen grabs the mouse and blocks the always-on laser (slidev/global-top.vue)
+drawings:
+  enabled: false
 ---
 
 # AVL Trees: Strictly Balanced Binary Search Trees

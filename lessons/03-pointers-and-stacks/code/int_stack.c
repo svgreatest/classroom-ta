@@ -12,7 +12,7 @@ IntStack* int_stack_create(int initial_capacity) {
     IntStack *s = (IntStack*)malloc(sizeof(IntStack));
     if (!s) return NULL;
 
-    s->items = (int*)malloc(initial_capacity * sizeof(int));
+    s->items = (int*)malloc((size_t)initial_capacity * sizeof(int));
     if (!s->items) {
         free(s);
         return NULL;
@@ -29,7 +29,7 @@ bool int_stack_push(IntStack *s, int value) {
     // Expand array if capacity reached
     if (s->top >= s->capacity) {
         int new_capacity = s->capacity * 2;
-        int *new_items = (int*)realloc(s->items, new_capacity * sizeof(int));
+        int *new_items = (int*)realloc(s->items, (size_t)new_capacity * sizeof(int));
         if (!new_items) {
             return false; // Allocation failure; old items preserved
         }

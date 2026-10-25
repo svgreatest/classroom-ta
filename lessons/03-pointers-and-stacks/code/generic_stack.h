@@ -30,6 +30,7 @@ bool generic_stack_push(GenericStack *s, const void *elem_addr);
 bool generic_stack_pop(GenericStack *s, void *out_elem);
 
 // Pop the top element and return a void* pointer directly to it (allows caller to cast to appropriate type)
+// The pointer is only valid until the next push: push may overwrite the slot or realloc the buffer.
 void* generic_stack_pop_ptr(GenericStack *s);
 
 // Peek at the top element by copying elem_size bytes into out_elem without removing it

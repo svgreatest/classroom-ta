@@ -118,7 +118,7 @@ export const BrandHeader: React.FC<BrandHeaderProps> = ({
   };
 
   return (
-    <header className="h-14 bg-[#181816]/95 backdrop-blur border-b border-[#383733] px-4 flex items-center justify-between z-30 select-none relative font-sans-anthropic">
+    <header className="h-14 bg-[#181816]/95 backdrop-blur border-b border-[#383733] px-4 flex items-center justify-between z-50 select-none relative font-sans-anthropic">
       {/* Brand Identity & Lesson Selector */}
       <div className="flex items-center gap-3">
         <div className="h-9 w-9 rounded-lg bg-gradient-to-tr from-[#cc785c] to-[#e08d73] flex items-center justify-center shadow-md text-white flex-shrink-0">

@@ -42,6 +42,11 @@ export const SlidevEmbed: React.FC<SlidevEmbedProps> = ({ lessonId, isDrawingAct
       .then(data => {
         if (data.port) setSlidevPort(data.port);
         setIsLoading(false);
+        // Not ready yet: show the retry screen instead of loading a dead iframe
+        if (data.success === false) {
+          setHasError(true);
+          return;
+        }
         setReloadKey(prev => prev + 1);
       })
       .catch(err => {
@@ -66,6 +71,10 @@ export const SlidevEmbed: React.FC<SlidevEmbedProps> = ({ lessonId, isDrawingAct
       .then(data => {
         if (data.port) setSlidevPort(data.port);
         setIsLoading(false);
+        if (data.success === false) {
+          setHasError(true);
+          return;
+        }
         setReloadKey(prev => prev + 1);
       })
       .catch(() => {

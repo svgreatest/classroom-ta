@@ -96,8 +96,10 @@ export class SlidevService {
   private isSwitching: boolean = false;
 
   public async setLessonAsync(lessonId: string): Promise<{ success: boolean; lessonId: string }> {
-    if (this.currentLessonId === lessonId && this.slidevProcess) {
-      const ready = await this.waitForReady(this.port, 3000, lessonId);
+    // Already launched for this lesson (possibly still on its first slow build):
+    // keep waiting rather than killing and restarting it
+    if (this.currentLessonId === lessonId && this.slidevProcess && !this.isSwitching) {
+      const ready = await this.waitForReady(this.port, 60000, lessonId);
       if (ready) {
         return { success: true, lessonId };
       }
@@ -124,7 +126,8 @@ export class SlidevService {
     await new Promise(r => setTimeout(r, 600));
     this.startSlidev();
 
-    const isReady = await this.waitForReady(this.port, 35000, lessonId);
+    // A deck's first build can take well over 30s
+    const isReady = await this.waitForReady(this.port, 90000, lessonId);
     this.isSwitching = false;
     console.log(`[SlidevService] Slidev ready for ${lessonId}: ${isReady}`);
     return { success: isReady, lessonId };

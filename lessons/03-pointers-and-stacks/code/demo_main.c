@@ -30,10 +30,8 @@ void demo_int_stack(void) {
     printf("IntStack destroyed safely.\n");
 }
 
-void demo_generic_stack(void) {
-    printf("\n--- 2. Flat Byte-Buffer Generic Stack Demo ---\n");
-
-    // A) Demonstrate Genuine Integer Stack
+// A) Demonstrate Genuine Integer Stack
+static void demo_generic_int_stack(void) {
     printf("\n[A] Generic Integer Stack (elem_size = sizeof(int) = %lu bytes):\n",
            (unsigned long)sizeof(int));
     GenericStack *int_stack = generic_stack_create(sizeof(int), 2);
@@ -52,8 +50,10 @@ void demo_generic_stack(void) {
         printf("    Popped: %d\n", val);
     }
     generic_stack_destroy(int_stack);
+}
 
-    // B) Demonstrate Genuine Character Stack
+// B) Demonstrate Genuine Character Stack
+static void demo_generic_char_stack(void) {
     printf("\n[B] Generic Character Stack (elem_size = sizeof(char) = %lu byte):\n",
            (unsigned long)sizeof(char));
     GenericStack *char_stack = generic_stack_create(sizeof(char), 2);
@@ -72,8 +72,10 @@ void demo_generic_stack(void) {
         printf("    Popped: '%c'\n", ch);
     }
     generic_stack_destroy(char_stack);
+}
 
-    // C) Demonstrate Custom Struct Storage
+// C) Demonstrate Custom Struct Storage
+static void demo_generic_struct_stack(void) {
     printf("\n[C] Generic Struct Stack ('StockQuote' structs, size: %lu bytes):\n",
            (unsigned long)sizeof(StockQuote));
     GenericStack *stock_stack = generic_stack_create(sizeof(StockQuote), 2);
@@ -94,6 +96,14 @@ void demo_generic_stack(void) {
         printf("    Popped Quote: %-6s at $%7.2f\n", quote->symbol, quote->price);
     }
     generic_stack_destroy(stock_stack);
+}
+
+void demo_generic_stack(void) {
+    printf("\n--- 2. Flat Byte-Buffer Generic Stack Demo ---\n");
+
+    demo_generic_int_stack();
+    demo_generic_char_stack();
+    demo_generic_struct_stack();
 
     printf("\nGenericStack successfully demonstrated genuine storage of int, char, and structs.\n");
 }
@@ -103,7 +113,7 @@ int main(void) {
     printf("Classroom TA -- Lesson 03: Pointers, Structs & Generic Stacks\n");
     printf("===============================================================\n");
 
-    demo_int_stack();
+    //demo_int_stack();
     demo_generic_stack();
 
     printf("\n[OK] Demonstration completed successfully with 0 memory leaks.\n");

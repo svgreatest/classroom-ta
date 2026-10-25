@@ -8,6 +8,40 @@ colorSchema: dark
 highlighter: shiki
 lineNumbers: true
 wakeLock: false
+# Off: Slidev's pen grabs the mouse and blocks the always-on laser (slidev/global-top.vue)
+drawings:
+  enabled: false
+---
+
+<a href="https://github.com/torvalds/linux/commit/499485a67fbacf4d9afbdb43522388c64f853428" target="_blank" class="commit-shot">
+  <img src="/linux-assisted-by-commit.png" alt="Linux kernel commit 499485a with Assisted-by, Signed-off-by and Reviewed-by tags highlighted" />
+</a>
+
+<div class="commit-link">
+  <a href="https://github.com/torvalds/linux/commit/499485a67fbacf4d9afbdb43522388c64f853428" target="_blank">github.com/torvalds/linux/commit/499485a</a>
+</div>
+
+<style>
+.commit-shot img { display: block; max-height: 400px; width: auto; max-width: 100%; margin: 0 auto; border: 1px solid #383733; border-radius: 0.6rem; }
+.commit-link { margin-top: 0.8rem; text-align: center; font-size: 1rem; }
+.commit-link a { color: #cc785c; border-bottom: 1px solid #cc785c; }
+</style>
+
+<!--
+HOOK (~2 min). A real Linux kernel commit, merged August 2026.
+
+The bug: a NULL pointer dereference, with a call trace. Both are today's topics.
+Two AI tools helped (Assisted-by: Claude, Codex). But the kernel's rules say
+"AI agents MUST NOT add Signed-off-by tags" — only humans can certify the code.
+So a human signed it, another human reviewed it, and the maintainer signed it again.
+
+Point: AI can help write the code. A human who understands it has to vouch for it.
+AI makes generating code cheap. Fundamentals make you valuable.
+
+Sources: https://github.com/torvalds/linux/commit/499485a67fbacf4d9afbdb43522388c64f853428
+         https://docs.kernel.org/process/coding-assistants.html
+-->
+
 ---
 
 <Badge>Lesson 03</Badge>
@@ -47,60 +81,154 @@ The roadmap for today. Each box is one slide group; point back to it as you move
 Next lesson we use the finished GenericStack to ship a real feature.
 -->
 
+
 ---
 
-# Why stacks: a real crash report
-
-```text {all|2|3|4|5}
-Program received signal SIGSEGV, Segmentation fault.
-#0  send_request (req=0x0) at gateway.c:88    ← newest call, crashed here
-#1  charge_card (amount=4999) at payment.c:17
-#2  place_order (cart=0x4052a0) at checkout.c:42
-#3  main () at main.c:9                       ← oldest call
+```yaml
+clicks: 5
 ```
 
-<InIndustry where="gdb · lldb · crash reporters (Sentry, Crashlytics)" icon="🧯">
-Calls pile up; the newest one fails first. That pile is a <strong>stack</strong>.
-</InIndustry>
+# What is an address?
+
+<script setup>
+// One entry per click: the CPU instructions that line of C turns into.
+// op: 'w' write to RAM, 'r' read from RAM, 'bad' read from memory we don't own
+const steps = [
+  [],
+  [{ ins: 'STORE 42 → [0x4000]', op: 'w', addr: '0x4000', val: '42' }],
+  [{ ins: 'LOAD [0x4000]', op: 'r', addr: '0x4000', val: '42' },
+   { ins: 'STORE 42 → [0x7A10]', op: 'w', addr: '0x7A10', val: '42' }],
+  [{ ins: 'STORE 0x4000 → [0x5008]', op: 'w', addr: '0x5008', val: '0x4000' }],
+  [{ ins: 'LOAD [0x5008]', op: 'r', addr: '0x5008', val: '0x4000' },
+   { ins: 'LOAD [0x4000]', op: 'r', addr: '0x4000', val: '42' }],
+  [{ ins: 'LOAD [0x0007]', op: 'bad', addr: '0x0007', val: '✕' }],
+]
+const code = ['int x = 42;', 'int y = x;', 'int *p = &x;', 'int z = *p;', 'z = *(int *)7;']
+// RAM contents after each click, by address
+const ram = (c) => [
+  { a: '0x0007', n: '', v: c === 5 ? 'not yours' : '', bad: c === 5 },
+  { a: '0x4000', n: 'x', v: c >= 1 ? '42' : '' },
+  { a: '0x5008', n: 'p', v: c >= 3 ? '0x4000' : '' },
+  { a: '0x7A10', n: 'y', v: c >= 2 ? '42' : '' },
+]
+</script>
+
+<div class="cr mt-6">
+  <div class="cr-box">
+    <div class="cr-label">C CODE</div>
+    <div v-for="(l, i) in code" :key="i" class="cr-line" :class="{ now: $clicks === i + 1, done: $clicks > i + 1 }">{{ l }}</div>
+  </div>
+
+  <div class="cr-flow">→</div>
+
+  <div class="cr-box cr-cpu">
+    <div class="cr-label">CPU</div>
+    <div v-for="(s, k) in steps[$clicks]" :key="`${$clicks}-${k}`" class="cr-ins" :class="s.op" :style="{ '--d': `${k * 1.4}s` }">{{ s.ins }}</div>
+  </div>
+
+  <div class="cr-wire">
+    <div v-for="(s, k) in steps[$clicks]" :key="`${$clicks}-${k}`" class="cr-msg" :class="s.op" :style="{ '--d': `${k * 1.4 + 0.3}s`, top: `${k * 4.2}rem` }">
+      <span v-if="s.op === 'w'">{{ s.val }} → {{ s.addr }}</span>
+      <span v-else>{{ s.addr }}?</span>
+      <span v-if="s.op !== 'w'" class="cr-back">← {{ s.val }}</span>
+    </div>
+  </div>
+
+  <div class="cr-box cr-ram">
+    <div class="cr-label">RAM</div>
+    <template v-for="(r, i) in ram($clicks)" :key="r.a">
+      <div v-if="i" class="cr-gap">⋮</div>
+      <div class="cr-row" :class="{ hl: steps[$clicks].some(s => s.addr === r.a && s.op !== 'bad'), bad: r.bad }">
+        <span class="cr-a">{{ r.a }}</span><span class="cr-v">{{ r.v }}</span><span class="cr-n">{{ r.n }}</span>
+      </div>
+    </template>
+  </div>
+</div>
+
+<style>
+.cr { display: grid; grid-template-columns: 215px 1.2rem 215px 1fr 215px; align-items: center; gap: 0.8rem; font-variant-ligatures: none; }
+.cr-box { border: 2px solid #5c5a54; border-radius: 0.6rem; background: #22221f; padding: 0.7rem 0.8rem; min-height: 15rem; display: flex; flex-direction: column; gap: 0.35rem; }
+.cr-cpu { border-color: #cc785c; }
+.cr-label { font-size: 0.75rem; letter-spacing: 0.15em; color: #9e978c; margin-bottom: 0.3rem; }
+.cr-line, .cr-ins { font-family: var(--slidev-code-font, monospace); }
+.cr-line { font-size: 0.95rem; color: #5c5a54; padding: 0.15rem 0.3rem; border-radius: 0.3rem; transition: all 0.3s; background: none; }
+.cr-line.done { color: #9e978c; }
+.cr-ins { padding: 0.15rem 0.3rem; }
+.cr-line.now { color: #faf6ee; background: rgba(204, 120, 92, 0.3); }
+.cr-flow { color: #cc785c; font-size: 1.5rem; text-align: center; }
+.cr-ins { font-size: 0.9rem; color: #faf6ee; opacity: 0; animation: cr-in 0.4s ease forwards; animation-delay: var(--d); background: none; }
+.cr-ins.bad { color: #f43f5e; }
+.cr-wire { position: relative; height: 15rem; }
+.cr-msg { position: absolute; left: 0; right: 0; margin-top: 3rem; padding-bottom: 0.2rem; border-bottom: 2px dashed #5c5a54; display: flex; flex-direction: column; font-family: var(--slidev-code-font, monospace); font-size: 0.9rem; opacity: 0; animation: cr-in 0.3s ease forwards, cr-go 0.8s ease forwards; animation-delay: var(--d); }
+.cr-msg span:first-child { color: #faf6ee; }
+.cr-back { align-self: flex-end; position: absolute; right: 0; top: 2.1rem; color: #d49b53; opacity: 0; animation: cr-in 0.4s ease forwards; animation-delay: calc(var(--d) + 0.7s); }
+.cr-msg.bad .cr-back { color: #f43f5e; }
+.cr-row { display: grid; grid-template-columns: 4.2rem 1fr 1rem; align-items: center; height: 2.3rem; border: 1px solid #383733; padding: 0 0.4rem; font-family: var(--slidev-code-font, monospace); transition: background 0.3s, border-color 0.3s; }
+.cr-row.hl { background: rgba(204, 120, 92, 0.3); border-color: #cc785c; }
+.cr-row.bad { background: rgba(244, 63, 94, 0.2); border-color: #f43f5e; }
+.cr-a { color: #9e978c; font-size: 0.8rem; }
+.cr-v { color: #faf6ee; font-size: 1rem; text-align: center; }
+.cr-row.bad .cr-v { color: #f43f5e; font-size: 0.8rem; }
+.cr-n { color: #d49b53; font-weight: 700; text-align: right; }
+.cr-gap { text-align: center; color: #5c5a54; line-height: 0.9rem; }
+@keyframes cr-in { to { opacity: 1; } }
+@keyframes cr-go { from { transform: translateX(-1.5rem); } to { transform: translateX(0); } }
+</style>
 
 <!--
-This is gdb's `bt` (backtrace) after a C program crashed: main called place_order, which called charge_card, which called send_request with a NULL pointer.
-Click from #0 down: frame #0 is the newest call. We unwind in reverse order: last in, first out.
-To build a stack in C we first need to talk about where data lives: memory and pointers.
+WHAT AN ADDRESS MEANS (~4 min). Follow the flow left to right on every click:
+C line → the CPU instruction(s) it becomes → a request on the wire → RAM.
+
+The CPU can't search RAM. Every instruction that touches memory carries a NUMBER.
+That number is the address.
+
+Click 1  int x = 42;   one instruction: STORE 42 at 0x4000. "x" is just our name for 0x4000.
+Click 2  int y = x;    TWO instructions: LOAD from 0x4000 (42 comes back), STORE it at 0x7A10.
+                       y is NOT next to x. The compiler picks where variables live; never assume neighbours.
+                       (Only array elements are guaranteed to sit side by side.)
+Click 3  int *p = &x;  &x is just the number 0x4000. Storing it is an ordinary STORE, at p's address 0x5008.
+Click 4  int z = *p;   TWO loads: first ask 0x5008 → get 0x4000; then ask 0x4000 → get 42.
+                       That's what * means: "use this value as the next address".
+Click 5  z = *(int *)7; The CPU happily asks for 0x0007. That memory isn't ours → the OS kills
+                       the program: segmentation fault. Same failure class as CrowdStrike, later today.
+
+STORE/LOAD are simplified names (x86 calls both "mov"). Addresses are made up.
+No buses, caches, registers or virtual memory today.
 -->
 
 ---
 
 ```yaml
-clicks: 3
+clicks: 4
 ```
 
-# Memory is one long street of numbered houses
+# Reading declarations (K&R §5.12)
 
-<div class="mt-10">
-<MemoryRow
+<div class="text-xl opacity-80 mb-4">Start at the name. Go <strong>right</strong> (<code>[]</code>, <code>()</code>) before <strong>left</strong> (<code>*</code>). Parentheses first.</div>
+
+<div class="space-y-6">
+<DeclRead
   :step="$clicks"
-  :cells="[
-    { addr: '0x1000', value: '42', name: 'x', highlightAt: [1] },
-    { addr: '0x1004', value: '7',  name: 'y' },
-    { addr: '0x1008', value: '0x1000', name: 'p', pointsTo: 0, showAt: 2, highlightAt: [3] },
-    { addr: '0x100C', value: '' },
-    { addr: '0x1010', value: '' },
-  ]"
+  :tokens="[{t:'int',n:4},{t:'('},{t:'*',n:2},{t:'row',n:1},{t:')'},{t:'[4]',n:3}]"
+  :say="['row is', 'a pointer to', 'an array of 4', 'ints']"
+/>
+<DeclRead
+  :step="$clicks"
+  :tokens="[{t:'int',n:4},{t:'*',n:3},{t:'arr',n:1},{t:'[4]',n:2}]"
+  :say="['arr is', 'an array of 4', 'pointers to', 'int']"
 />
 </div>
 
-<div class="mt-6 text-2xl space-y-2">
-<div v-click="1"><code>&x</code> is the <em>address</em> of x: <code>0x1000</code></div>
-<div v-click="2"><code>int *p = &x;</code> stores that address in p</div>
-<div v-click="3"><code>*p</code> follows the arrow and reads 42</div>
+<div v-click="4" class="mt-6 grid grid-cols-2 gap-x-8 gap-y-1 text-lg font-mono">
+<div><code>char **argv</code></div><div class="font-sans">pointer to pointer to char</div>
+<div><code>void *comp()</code></div><div class="font-sans">function returning pointer to void</div>
+<div><code>void (*comp)()</code></div><div class="font-sans">pointer to function returning void</div>
 </div>
 
-<TutorLink example="basics" label="Watch it in the C Memory Tutor" />
-
 <!--
-Each int takes 4 bytes. A pointer is just a variable whose value is an address.
-& = "address of", * = "go to that address". Open the Tutor and step through basics.
+Same tokens, different order, totally different types: that's why int (*row)[4] needs the parentheses.
+The table is from K&R §5.12 "Complicated Declarations". Ask the class to read void (*comp)() aloud before revealing.
+Tool tip: cdecl.org translates declarations to English.
 -->
 
 ---
@@ -210,15 +338,17 @@ clicks: 3
 <div class="grid grid-cols-2 gap-6 mt-4">
 
 ```c
-char a[] = "cat";  // 4 bytes you own: a[0] = 'b' ✓
-char *s  = "cat";  // points at a read-only literal:
-                   // s[0] = 'b' crashes ✗
+char a[] = "cat";  // your copy
+a[0] = 'b';        // ✓ fine
+
+char *s  = "cat";  // read-only literal
+s[0] = 'b';        // ✗ crashes
 ```
 
 <div class="text-2xl space-y-2">
 <div v-click="1"><code>*s</code> is <code>'c'</code>: one byte</div>
 <div v-click="2"><code>s + 1</code> moves 1 byte</div>
-<div v-click="3"><code>'\0'</code> marks the end: <code>while (*s) s++;</code></div>
+<div v-click="3" class="whitespace-nowrap"><code>'\0'</code> marks the end: <code>while (*s) s++;</code></div>
 </div>
 </div>
 
@@ -271,7 +401,8 @@ clicks: 3
 
 ```c
 void set_null(int **pp) {
-    *pp = NULL;   // changes the CALLER's pointer
+    // changes the caller's ptr
+    *pp = NULL;
 }
 set_null(&ptr);
 ```
@@ -318,7 +449,7 @@ Industry: every "out parameter" API: getline(&buf, &n, f), strtol(s, &end, 10), 
 
 # Pointer to an array: `int (*row)[4]`
 
-<div class="grid grid-cols-2 gap-8 mt-6">
+<div class="grid grid-cols-[1.35fr_1fr] gap-6 mt-6">
 <div>
 
 ```c
@@ -339,7 +470,7 @@ int *arr[4];          // NOT the same: 4 pointers
 
 $$\texttt{row + i} = \text{address}(\texttt{row}) + i \times \texttt{sizeof(int[4])} \qquad \texttt{m[i][j]} \equiv \texttt{*(*(m + i) + j)}$$
 
-<TutorLink example="arrays" label="Step through arrays in the Tutor" />
+<TutorLink example="arrays_2d" label="Step through a 2-D array in the Tutor" />
 
 <style>
 .row-grid { display: grid; grid-template-columns: auto 1fr; gap: 0.5rem 0.8rem; align-items: center; font-size: 1.4rem; }
@@ -352,42 +483,7 @@ $$\texttt{row + i} = \text{address}(\texttt{row}) + i \times \texttt{sizeof(int[
 
 <!--
 Memory is still one flat street: 12 ints in a row. The pointer's TYPE decides the step size: int* steps 4 bytes, int (*)[4] steps a whole 16-byte row.
-The parentheses matter. The next slide shows how to read declarations like this.
--->
-
----
-
-```yaml
-clicks: 4
-```
-
-# Reading declarations (K&R §5.12)
-
-<div class="text-xl opacity-80 mb-4">Start at the name. Go <strong>right</strong> (<code>[]</code>, <code>()</code>) before <strong>left</strong> (<code>*</code>). Parentheses first.</div>
-
-<div class="space-y-6">
-<DeclRead
-  :step="$clicks"
-  :tokens="[{t:'int',n:4},{t:'('},{t:'*',n:2},{t:'row',n:1},{t:')'},{t:'[4]',n:3}]"
-  :say="['row is', 'a pointer to', 'an array of 4', 'ints']"
-/>
-<DeclRead
-  :step="$clicks"
-  :tokens="[{t:'int',n:4},{t:'*',n:3},{t:'arr',n:1},{t:'[4]',n:2}]"
-  :say="['arr is', 'an array of 4', 'pointers to', 'int']"
-/>
-</div>
-
-<div v-click="4" class="mt-6 grid grid-cols-2 gap-x-8 gap-y-1 text-lg font-mono">
-<div><code>char **argv</code></div><div class="font-sans">pointer to pointer to char</div>
-<div><code>void *comp()</code></div><div class="font-sans">function returning pointer to void</div>
-<div><code>void (*comp)()</code></div><div class="font-sans">pointer to function returning void</div>
-</div>
-
-<!--
-Same tokens, different order, totally different types: that's why int (*row)[4] needs the parentheses.
-The table is from K&R §5.12 "Complicated Declarations". Ask the class to read void (*comp)() aloud before revealing.
-Tool tip: cdecl.org translates declarations to English.
+The parentheses matter. Read it with the declaration rule from the start of class.
 -->
 
 ---
@@ -462,6 +558,49 @@ Industry link: C++ std::vector, Rust Vec and Go slices grow exactly this way; "i
 
 ---
 
+```yaml
+clicks: 4
+```
+
+# `void *memcpy(void *dest, const void *src, size_t n);`
+
+<div class="mc-rows mt-14">
+<MemoryRow
+  :step="$clicks"
+  :cells="[
+    { addr: '0x2000', value: '2A', name: 'src', highlightAt: [1] },
+    { addr: '0x2001', value: '00', highlightAt: [2] },
+    { addr: '0x2002', value: '00', highlightAt: [3] },
+    { addr: '0x2003', value: '00', highlightAt: [4] },
+  ]"
+/>
+<div class="mc-arrow">↓</div>
+<MemoryRow
+  :step="$clicks"
+  :cells="[
+    { addr: '0x5000', value: '2A', name: 'dst', showAt: 1, highlightAt: [1] },
+    { addr: '0x5001', value: '00', showAt: 2, highlightAt: [2] },
+    { addr: '0x5002', value: '00', showAt: 3, highlightAt: [3] },
+    { addr: '0x5003', value: '00', showAt: 4, highlightAt: [4] },
+  ]"
+/>
+</div>
+
+<style>
+.mc-rows { display: flex; flex-direction: column; align-items: center; gap: 0.8rem; }
+.mc-arrow { font-size: 2rem; color: #cc785c; }
+</style>
+
+<!--
+NO TEXT ON PURPOSE. Let them narrate it. Argument order is dest first, then src (like dest = src).
+Here: memcpy(dst, src, 4).
+src holds the int 42 (0x2A) as 4 bytes, little-endian. Each click copies one byte.
+Ask: "Does memcpy know this was an int?" No: it only sees an address and a byte count.
+That's exactly how GenericStack stores any type: memcpy(target, elem_addr, elem_size).
+-->
+
+---
+
 # `void*` — a pointer that forgot its type
 
 ```c {1|2|3-4}
@@ -508,6 +647,103 @@ Generic containers in C = <code>void*</code> + <code>elem_size</code>.
 
 ---
 
+# Find the bug
+
+```c {all|5|all}
+void apply_rule(char *fields[20]) {
+    for (int i = 0; i < 20; i++)
+        check(fields[i]);
+
+    check(fields[20]);
+}
+```
+
+<div v-click="2" class="cs-reveal">
+19 July 2024: this bug, simplified, crashed <strong>8.5 million</strong> Windows PCs.
+<div class="cs-who">CrowdStrike Falcon · Windows kernel driver</div>
+</div>
+
+<style>
+.cs-reveal { margin-top: 2rem; font-size: 1.6rem; color: #faf6ee; }
+.cs-reveal strong { color: #cc785c; }
+.cs-who { margin-top: 0.4rem; font-size: 1rem; color: #9e978c; }
+</style>
+
+<!--
+WHY POINTERS MATTER (~3 min). Show the code, ask: "What's wrong?" Give them 30 s.
+
+Click 1: fields[20] is *(fields + 20), one slot past the end. C computes the
+address and never checks it. Out-of-bounds read.
+
+Click 2: CrowdStrike, 19 July 2024. A content update (Channel File 291) gave the
+kernel driver 21 input fields; the code supplied 20 values and read the 21st.
+In the kernel that's a blue screen, then a boot loop. ~8.5 million devices,
+many fixed by hand in Safe Mode. (Often called a "NULL pointer bug"; the official
+root-cause report says out-of-bounds read.)
+
+Bridge: our push writes base + top * elem_size by hand. Which line stops us
+going past the end? (The top >= capacity check.)
+
+Sources: https://www.crowdstrike.com/wp-content/uploads/2024/08/Channel-File-291-Incident-Root-Cause-Analysis-08.06.2024.pdf
+         https://blogs.microsoft.com/blog/2024/07/20/helping-our-customers-through-the-crowdstrike-outage/
+-->
+
+---
+
+# Pointer code that survives production
+
+<div class="adv mt-8">
+<v-clicks>
+
+<div><code>int *p = NULL;</code><span>Never leave a pointer uninitialised</span></div>
+<div><code>if (!p) return ERR;</code><span>Check every <code>malloc</code> / <code>realloc</code></span></div>
+<div><code>f(buf, len)</code><span>A pointer travels with its length</span></div>
+<div><code>free(p); p = NULL;</code><span>One owner frees, exactly once</span></div>
+<div><code>-Wall -Wextra -fsanitize=address</code><span>Let the tools find it first</span></div>
+
+</v-clicks>
+</div>
+
+<style>
+.adv > div { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: center; padding: 0.55rem 0; border-bottom: 1px solid #383733; font-size: 1.25rem; }
+.adv code { font-variant-ligatures: none; }
+.adv span { color: #d4cfc5; }
+</style>
+
+<!--
+PRACTICAL ADVICE (~3 min). One line each; give a quick story where you have one.
+- NULL init: a garbage pointer looks valid; NULL crashes loudly and early.
+- Check allocations: tmp = realloc(p, n) so a failure doesn't lose p (our push does this).
+- Pointer + length: the CrowdStrike bug was a read past a known size. strncpy, snprintf, memcpy all take n.
+- Ownership: decide who frees. Document it in the header. Setting p = NULL turns a double free into a no-op.
+- Tools: AddressSanitizer and Valgrind catch out-of-bounds and use-after-free in seconds.
+  Real codebases also add code review, fuzzing (Linux syzkaller) and static analysis (clang-tidy, Coverity).
+-->
+
+---
+
+# Why stacks: a real crash report
+
+```text {all|2|3|4|5}
+Program received signal SIGSEGV, Segmentation fault.
+#0  send_request (req=0x0) at gateway.c:88    ← newest call, crashed here
+#1  charge_card (amount=4999) at payment.c:17
+#2  place_order (cart=0x4052a0) at checkout.c:42
+#3  main () at main.c:9                       ← oldest call
+```
+
+<InIndustry where="gdb · lldb · crash reporters (Sentry, Crashlytics)" icon="🧯">
+Calls pile up; the newest one fails first. That pile is a <strong>stack</strong>.
+</InIndustry>
+
+<!--
+This is gdb's `bt` (backtrace) after a C program crashed: main called place_order, which called charge_card, which called send_request with a NULL pointer.
+Click from #0 down: frame #0 is the newest call. We unwind in reverse order: last in, first out.
+Now we build that pile ourselves.
+-->
+
+---
+
 ```yaml
 clicks: 6
 ```
@@ -537,17 +773,6 @@ Click through slowly; ask the class to predict each pop before you click.
 <BigIdea kicker="LIFO">
 Last in, first out.<br/>You can only touch the top.
 </BigIdea>
-
----
-
-# Where you've already used a stack today
-
-<div class="grid grid-cols-2 gap-5 mt-6">
-<InIndustry where="Your editor · Ctrl+Z" icon="↩️">Every edit is pushed; undo pops the latest.</InIndustry>
-<InIndustry where="Browser Back button" icon="🌐">Each page you visit is pushed onto history.</InIndustry>
-<InIndustry where="Function calls" icon="🧵">Each call pushes a frame; <code>return</code> pops it.</InIndustry>
-<InIndustry where="Compilers · spreadsheets" icon="🧮">Parsing <code>(3 + 4) * 2</code> uses an operator stack.</InIndustry>
-</div>
 
 ---
 
@@ -710,6 +935,11 @@ This "void* + elem_size" pattern is how C codebases build reusable containers.
 
 ---
 
-<BigIdea kicker="Takeaway">
-A generic stack is just a heap buffer, a size, and a top index — plus the discipline to only touch the top.
-</BigIdea>
+# Where you've already used a stack today
+
+<div class="grid grid-cols-2 gap-5 mt-6">
+<InIndustry where="Your editor · Ctrl+Z" icon="↩️">Every edit is pushed; undo pops the latest.</InIndustry>
+<InIndustry where="Browser Back button" icon="🌐">Each page you visit is pushed onto history.</InIndustry>
+<InIndustry where="Function calls" icon="🧵">Each call pushes a frame; <code>return</code> pops it.</InIndustry>
+<InIndustry where="Compilers · spreadsheets" icon="🧮">Parsing <code>(3 + 4) * 2</code> uses an operator stack.</InIndustry>
+</div>

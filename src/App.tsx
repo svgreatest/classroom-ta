@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { BrandHeader, LessonId, LessonInfo, DEFAULT_LESSONS } from './branding/BrandHeader';
 import { SlidevEmbed } from './components/slides/SlidevEmbed';
 import { getVisualizerForLesson } from './components/visualizer/registry';
@@ -24,6 +24,50 @@ export const App: React.FC = () => {
   const [isNewLessonModalOpen, setIsNewLessonModalOpen] = useState<boolean>(false);
 
   const [isDrawingActive, setIsDrawingActive] = useState<boolean>(false);
+
+  // On the slides tab the header floats over the deck and hides until the
+  // pointer reaches the top edge, so the slides get the full screen height
+  const autoHideHeader = activeTab === 'slides';
+  const [isHeaderRevealed, setIsHeaderRevealed] = useState<boolean>(false);
+  const hideHeaderTimer = useRef<number | undefined>(undefined);
+  const revealHeader = () => {
+    window.clearTimeout(hideHeaderTimer.current);
+    setIsHeaderRevealed(true);
+  };
+  const scheduleHideHeader = () => {
+    window.clearTimeout(hideHeaderTimer.current);
+    hideHeaderTimer.current = window.setTimeout(() => setIsHeaderRevealed(false), 400);
+  };
+
+  // The laser overlay covers only <main>, so the header stays clickable
+  const mainRef = useRef<HTMLElement | null>(null);
+  const [mainTop, setMainTop] = useState<number>(0);
+  useEffect(() => {
+    const measure = () => setMainTop(mainRef.current?.getBoundingClientRect().top ?? 0);
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [autoHideHeader]);
+
+  // The laser overlay sits over the slides iframe; pass a tap through so links,
+  // buttons and quiz options inside the deck still work (see slidev/global-top.vue)
+  const postToSlides = useCallback((type: 'tap' | 'wheel', clientX: number, clientY: number, extra = {}) => {
+    const iframe = mainRef.current?.querySelector('iframe');
+    if (!iframe) return;
+    const rect = iframe.getBoundingClientRect();
+    iframe.contentWindow?.postMessage(
+      { target: 'ta-laser', type, x: clientX - rect.left, y: clientY - rect.top, ...extra },
+      '*'
+    );
+  }, []);
+  const forwardTapToSlides = useCallback(
+    (clientX: number, clientY: number) => postToSlides('tap', clientX, clientY),
+    [postToSlides]
+  );
+  const forwardWheelToSlides = useCallback(
+    (clientX: number, clientY: number, dx: number, dy: number) => postToSlides('wheel', clientX, clientY, { dx, dy }),
+    [postToSlides]
+  );
   const [isWhiteboardOpen, setIsWhiteboardOpen] = useState<boolean>(false);
 
   // Listen for C Tutor demo launch requests from Slidev slides or other components
@@ -173,7 +217,20 @@ export const App: React.FC = () => {
 
   return (
     <div className="h-screen w-screen flex flex-col bg-[#181816] text-[#faf6ee] overflow-hidden relative font-sans-anthropic">
+      {/* Thin hot zone along the top edge; the iframe swallows mouse events, so
+          this is what notices the pointer arriving there */}
+      {autoHideHeader && !isHeaderRevealed && (
+        <div className="absolute top-0 inset-x-0 h-2 z-50" onMouseEnter={revealHeader} />
+      )}
+
       {/* Brand Header with Curriculum Switcher & Tools */}
+      <div
+        className={autoHideHeader
+          ? `absolute top-0 inset-x-0 z-50 transition-transform duration-200 ${isHeaderRevealed ? 'translate-y-0' : '-translate-y-full'}`
+          : 'relative z-50'}
+        onMouseEnter={autoHideHeader ? revealHeader : undefined}
+        onMouseLeave={autoHideHeader ? scheduleHideHeader : undefined}
+      >
       <BrandHeader
         currentLessonId={currentLessonId}
         onSelectLesson={handleSelectLesson}
@@ -189,9 +246,10 @@ export const App: React.FC = () => {
         onOpenNewLesson={() => setIsNewLessonModalOpen(true)}
         lessonsList={lessonsList}
       />
+      </div>
 
       {/* Main Classroom Content Area */}
-      <main className="flex-1 overflow-hidden relative">
+      <main ref={mainRef} className="flex-1 overflow-hidden relative">
         <div className={`h-full w-full ${activeTab === 'slides' ? 'block' : 'hidden'}`}>
           <SlidevEmbed
             lessonId={currentLessonId}
@@ -225,6 +283,10 @@ export const App: React.FC = () => {
       <DrawingCanvasOverlay
         slideKey={`${currentLessonId}-${activeTab === 'slides' ? `slide-${currentSlide}` : activeTab}`}
         isActive={isDrawingActive}
+        laserOnly={activeTab === 'slides' && !isWhiteboardOpen && !isNewLessonModalOpen}
+        onTap={forwardTapToSlides}
+        onWheelPassThrough={forwardWheelToSlides}
+        insetTop={mainTop}
         onClose={() => setIsDrawingActive(false)}
       />
 

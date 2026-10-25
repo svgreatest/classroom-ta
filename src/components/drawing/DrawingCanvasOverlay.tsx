@@ -5,6 +5,14 @@ import { laserOpacity, laserExpired } from './laser';
 interface DrawingCanvasOverlayProps {
   slideKey: string;
   isActive: boolean;
+  // Pen mode off: show only the laser (no toolbar), and hand quick taps to onTap
+  // so the content underneath can still be clicked.
+  laserOnly?: boolean;
+  onTap?: (clientX: number, clientY: number) => void;
+  // Laser-only mode: mouse wheel over the overlay, to scroll what's underneath
+  onWheelPassThrough?: (clientX: number, clientY: number, deltaX: number, deltaY: number) => void;
+  // Leave this many pixels at the top uncovered (e.g. the app header)
+  insetTop?: number;
   onClose: () => void;
 }
 
@@ -41,6 +49,10 @@ interface SlideAnnotations {
 export const DrawingCanvasOverlay: React.FC<DrawingCanvasOverlayProps> = ({
   slideKey,
   isActive,
+  laserOnly = false,
+  onTap,
+  onWheelPassThrough,
+  insetTop = 0,
   onClose
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -74,7 +86,12 @@ export const DrawingCanvasOverlay: React.FC<DrawingCanvasOverlayProps> = ({
   const [color, setColor] = useState<string>('#facc15');
   const [penWidth, setPenWidth] = useState<number>(3);
   const [eraserSize, setEraserSize] = useState<number>(30); // 15, 30, 60, 100
-  const [tool, setTool] = useState<Tool>('pen');
+  const [penTool, setTool] = useState<Tool>('pen');
+  const tool: Tool = isActive ? penTool : 'laser';
+  const capturing = isActive || laserOnly;
+  // Where a laser-only press started, to tell a tap from a drag. Once the
+  // pointer wanders off, it's a stroke, even if it ends back at the start (an O).
+  const tapStartRef = useRef<{ x: number; y: number; moved: boolean } | null>(null);
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
 
   const prevSlideKeyRef = useRef<string>(slideKey);
@@ -194,18 +211,18 @@ export const DrawingCanvasOverlay: React.FC<DrawingCanvasOverlayProps> = ({
     const canvas = canvasRef.current;
     if (!canvas) return;
     const resize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      canvas.width = canvas.clientWidth;
+      canvas.height = canvas.clientHeight;
       if (laserCanvasRef.current) {
-        laserCanvasRef.current.width = window.innerWidth;
-        laserCanvasRef.current.height = window.innerHeight;
+        laserCanvasRef.current.width = laserCanvasRef.current.clientWidth;
+        laserCanvasRef.current.height = laserCanvasRef.current.clientHeight;
       }
       redraw();
     };
     resize();
     window.addEventListener('resize', resize);
     return () => window.removeEventListener('resize', resize);
-  }, [redraw]);
+  }, [redraw, insetTop, capturing]);
 
   useEffect(() => {
     redraw();
@@ -218,9 +235,9 @@ export const DrawingCanvasOverlay: React.FC<DrawingCanvasOverlayProps> = ({
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
     // The overlay mounts lazily, so this canvas can miss the resize effect
-    if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+    if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
+      canvas.width = canvas.clientWidth;
+      canvas.height = canvas.clientHeight;
     }
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -297,7 +314,8 @@ export const DrawingCanvasOverlay: React.FC<DrawingCanvasOverlayProps> = ({
   };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!isActive) return;
+    if (!capturing) return;
+    tapStartRef.current = laserOnly && !isActive ? { x: e.clientX, y: e.clientY, moved: false } : null;
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -341,7 +359,10 @@ export const DrawingCanvasOverlay: React.FC<DrawingCanvasOverlayProps> = ({
     const y = e.clientY - rect.top;
     setCursorPos({ x, y });
 
-    if (!isActive) return;
+    if (!capturing) return;
+
+    const tapStart = tapStartRef.current;
+    if (tapStart && Math.hypot(e.clientX - tapStart.x, e.clientY - tapStart.y) >= 6) tapStart.moved = true;
 
     if (tool === 'eraser' && e.buttons === 1) {
       performErase(x, y);
@@ -360,6 +381,16 @@ export const DrawingCanvasOverlay: React.FC<DrawingCanvasOverlayProps> = ({
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const tapStart = tapStartRef.current;
+    tapStartRef.current = null;
+    if (tapStart && !tapStart.moved) {
+      // A tap, not a laser stroke: drop the dot and click what's underneath
+      laserStrokesRef.current.pop();
+      laserDrawingRef.current = false;
+      scheduleLaser();
+      onTap?.(e.clientX, e.clientY);
+      return;
+    }
     if (laserDrawingRef.current) {
       try {
         e.currentTarget.releasePointerCapture(e.pointerId);
@@ -417,13 +448,18 @@ export const DrawingCanvasOverlay: React.FC<DrawingCanvasOverlayProps> = ({
     persistCurrentSlide([], []);
   };
 
-  if (!isActive && strokes.length === 0 && texts.length === 0) return null;
+  if (!capturing && strokes.length === 0 && texts.length === 0) return null;
 
   return (
     <div
       className={`fixed inset-0 z-40 ${
-        isActive ? 'pointer-events-auto cursor-crosshair' : 'pointer-events-none'
+        capturing ? 'pointer-events-auto cursor-crosshair' : 'pointer-events-none'
       }`}
+      style={{ top: insetTop }}
+      onPointerLeave={() => setCursorPos(null)}
+      onWheel={e => {
+        if (laserOnly && !isActive) onWheelPassThrough?.(e.clientX, e.clientY, e.deltaX, e.deltaY);
+      }}
     >
       <canvas
         ref={canvasRef}
@@ -439,9 +475,9 @@ export const DrawingCanvasOverlay: React.FC<DrawingCanvasOverlayProps> = ({
       />
 
       {/* Laser dot follows the pen, like a physical laser pointer */}
-      {isActive && tool === 'laser' && cursorPos && (
+      {capturing && tool === 'laser' && cursorPos && (
         <div
-          className="fixed pointer-events-none rounded-full z-50 transform -translate-x-1/2 -translate-y-1/2"
+          className="absolute pointer-events-none rounded-full z-50 transform -translate-x-1/2 -translate-y-1/2"
           style={{
             left: cursorPos.x,
             top: cursorPos.y,
@@ -456,7 +492,7 @@ export const DrawingCanvasOverlay: React.FC<DrawingCanvasOverlayProps> = ({
       {/* Eraser Outline Preview Cursor */}
       {isActive && tool === 'eraser' && cursorPos && (
         <div
-          className="fixed pointer-events-none rounded-full border-2 border-rose-400 bg-rose-500/10 z-50 transform -translate-x-1/2 -translate-y-1/2 shadow-lg"
+          className="absolute pointer-events-none rounded-full border-2 border-rose-400 bg-rose-500/10 z-50 transform -translate-x-1/2 -translate-y-1/2 shadow-lg"
           style={{
             left: cursorPos.x,
             top: cursorPos.y,

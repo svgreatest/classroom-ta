@@ -12,3 +12,5 @@ test-artifacts/screenshots/
 test-artifacts/*.png
 media/
 **/partial_movie_files/
+test-artifacts/baseline/
+test-artifacts/gate*/
